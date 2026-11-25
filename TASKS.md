@@ -2,7 +2,7 @@
 
 Work through one numbered task at a time. Each task is complete only when its acceptance criteria and verification are satisfied. Record evidence in the task entry; add follow-ups rather than concealing limitations. The current code is a prototype, not evidence that a task is complete.
 
-Status: `[ ]` not started, `[~]` in progress, `[x]` complete, `[!]` blocked. Next task: **17**. The live pilot (Task 9) remains conditional on the open access and reuse decisions in the site inspection.
+Status: `[ ]` not started, `[~]` in progress, `[x]` complete, `[!]` blocked. Next task: **18**. The live pilot (Task 9) remains conditional on the open access and reuse decisions in the site inspection.
 
 ## Phase 1: Define the project
 
@@ -31,7 +31,7 @@ Status: `[ ]` not started, `[~]` in progress, `[x]` complete, `[!]` blocked. Nex
 ## Phase 4: Prepare model-ready data
 
 - [x] **16. Chunk documents.** Preserve context, structured table relationships and source references in bounded chunks. Verification: 30 tests pass, including text bounds and overlap, merged table headers, row spans, provenance and oversized-row failure. Generated and inspected row chunks from the sampled schedule and fee HTML. Ordinary text chunks can still contain flattened tables; retrieval must be evaluated for source support.
-- [ ] **17. Create an evaluation set.** Prepare reviewed questions with expected answers or supporting sources across relevant topics and campuses. Verification: inspect coverage and keep evaluation separate from training examples.
+- [x] **17. Create an evaluation set.** Prepare reviewed questions with expected answers or supporting sources across relevant topics and campuses. Verification: reviewed 12 source-linked questions: nine point to pilot sources and three point to current-student pages outside the pilot. Automated checks validate the set; no training set exists yet. This public development set is not an independent final benchmark.
 - [ ] **18. Build a retrieval baseline.** Return source-linked passages for queries. Verification: measure retrieval on the held-out evaluation set and report method, results, and failures.
 - [ ] **19. Prepare fine-tuning examples.** If justified by the baseline, create reviewed, source-grounded examples and separate training and evaluation sets. Verification: inspect representative examples and document split methodology; otherwise record why this task is deferred.
 - [ ] **20. Validate training data.** Check schema, duplicates, missing fields, and split leakage. Verification: automated checks and human review for accuracy and unsupported claims.
