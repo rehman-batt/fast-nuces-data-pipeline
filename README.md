@@ -86,3 +86,5 @@ This command does not download PDFs or verify that the supplied source URL corre
 ## Search baseline
 
 Prepare a local collection and run `python3 -m fast_corpus.cli search --input data/chunks.jsonl --query "How do I apply?"`. The in-memory BM25 baseline applies a simple English trailing-`s` normalization and returns matching chunks and source metadata; it does not generate answers. Run `python3 -m fast_corpus.cli evaluate --input data/chunks.jsonl` to score pilot-covered development questions. Add `--scope indexed` to score cases whose labeled sources are in a different index; the output lists excluded cases and does not verify evidence support. The initial result and its limitations are documented in [evaluation/BASELINE.md](evaluation/BASELINE.md).
+
+For reproducible local experiments, the `manifest` command records input hashes, selected non-secret settings and environment metadata. See [REPRODUCIBILITY.md](REPRODUCIBILITY.md) for its limitations.
