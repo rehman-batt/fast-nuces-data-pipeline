@@ -99,7 +99,7 @@ class NoRedirect(HTTPRedirectHandler):
 
 
 class Crawler:
-    def __init__(self, hosts, user_agent, delay=2.0, timeout=20, max_bytes=2_000_000, excluded_paths=()):
+    def __init__(self, hosts, user_agent, delay=2.0, timeout=20, max_bytes=2_000_000, excluded_paths=(), allow_missing_robots=False):
         if not user_agent.strip() or "example.org/contact" in user_agent:
             raise ValueError("Provide a descriptive user agent with your contact information")
         if delay < 1:
@@ -108,6 +108,7 @@ class Crawler:
         if any(not path.startswith('/') or '?' in path or '#' in path for path in excluded_paths):
             raise ValueError("Excluded paths must begin with / and omit query and fragment")
         self.excluded_paths = tuple(excluded_paths)
+        self.allow_missing_robots = allow_missing_robots
         self.ua, self.delay, self.timeout, self.max_bytes = user_agent, delay, timeout, max_bytes
         self.opener = build_opener(NoRedirect())
         self.robots = {}
@@ -144,7 +145,15 @@ class Crawler:
                         raise ValueError("robots.txt exceeds size limit")
                     parser.parse(raw.decode("utf-8", "replace").splitlines())
                 self.robots[origin] = parser
-            except (HTTPError, URLError, TimeoutError, OSError, ValueError) as exc:
+            except HTTPError as exc:
+                if exc.code == 404 and self.allow_missing_robots:
+                    LOG.warning("robots.txt returned 404; explicit missing-file policy enabled for %s", origin)
+                    parser.parse([])
+                    self.robots[origin] = parser
+                else:
+                    LOG.warning("Cannot verify %s (%s); skipping host", robots_url, exc)
+                    self.robots[origin] = None
+            except (URLError, TimeoutError, OSError, ValueError) as exc:
                 LOG.warning("Cannot verify %s (%s); skipping host", robots_url, exc)
                 self.robots[origin] = None
         parser = self.robots[origin]
