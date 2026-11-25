@@ -47,6 +47,7 @@ def main():
     evaluation.add_argument("--limit", type=int, default=5)
     validation = commands.add_parser("validate-training", help="Validate model-neutral training examples")
     validation.add_argument("--input", required=True)
+    validation.add_argument("--holdout", help="Optional local JSONL file of held-out questions")
     validation.add_argument("--source-pages", help="Optional JSONL snapshot used to verify exact evidence text")
     validation.add_argument("--evaluation", default="evaluation/questions.jsonl")
     manifest = commands.add_parser("manifest", help="Record hashes and environment for a local run")
@@ -63,7 +64,7 @@ def main():
             create_manifest(args.input, args.output, args.setting)
             print(f"Wrote run manifest to {args.output}")
         elif args.command == "validate-training":
-            result = validate_training(args.input, load_jsonl(args.evaluation), load_jsonl(args.source_pages) if args.source_pages else None)
+            result = validate_training(args.input, load_jsonl(args.evaluation), load_jsonl(args.source_pages) if args.source_pages else None, load_jsonl(args.holdout) if args.holdout else None)
             print(json.dumps(result, ensure_ascii=False, indent=2))
             if result['issues']:
                 parser.exit(1)

@@ -5,7 +5,7 @@ from .crawler import normalize
 from .schema import validate_page
 
 
-def validate_training(path, evaluation_questions=None, source_pages=None):
+def validate_training(path, evaluation_questions=None, source_pages=None, holdout_questions=None):
     seen_questions = {}
     source_splits = {}
     issues = []
@@ -17,6 +17,11 @@ def validate_training(path, evaluation_questions=None, source_pages=None):
             if not page['needs_ocr_review']:
                 sources.setdefault(page['url'], []).append(page['text'])
     eval_questions = {' '.join(row['question'].split()).casefold() for row in (evaluation_questions or [])}
+    holdout = set()
+    for item in holdout_questions or []:
+        if not isinstance(item, dict) or not isinstance(item.get('question'), str) or not item['question'].strip():
+            raise ValueError('holdout records must contain a non-empty question')
+        holdout.add(' '.join(item['question'].split()).casefold())
     eval_sources = {normalize(url) for row in (evaluation_questions or []) for url in row['expected_urls']}
     with open(path, encoding='utf-8') as handle:
         for line_number, line in enumerate(handle, 1):
@@ -42,6 +47,8 @@ def validate_training(path, evaluation_questions=None, source_pages=None):
                     issues.append(f'line {line_number}: duplicate question (line {seen_questions[question]})')
                 else:
                     seen_questions[question] = line_number
+                if question in holdout:
+                    issues.append(f'line {line_number}: question overlaps user holdout')
                 if question in eval_questions:
                     issues.append(f'line {line_number}: question overlaps development evaluation')
                 if source_pages is not None and not any(row['evidence'] in text for text in sources.get(url, [])):

@@ -10,11 +10,11 @@ class TrainingValidationTests(unittest.TestCase):
     def setUp(self):
         self.row = {'question': 'What is the example?', 'answer': 'An example.', 'evidence': 'Example evidence.', 'source_url': 'https://example.test/source', 'source_date': '2026-11-25', 'split': 'train'}
 
-    def validate(self, rows, evaluation=None, sources=None):
+    def validate(self, rows, evaluation=None, sources=None, holdout=None):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / 'data.jsonl'
             path.write_text(''.join(json.dumps(row) + '\n' for row in rows))
-            return validate_training(path, evaluation, sources)
+            return validate_training(path, evaluation, sources, holdout)
 
     def test_valid_record_and_split_leakage(self):
         self.assertEqual(self.validate([self.row])['issues'], [])
@@ -43,6 +43,13 @@ class TrainingValidationTests(unittest.TestCase):
         self.assertTrue(any('reviewed source snapshot' in issue for issue in issues))
         page['needs_ocr_review'] = False
         self.assertEqual(self.validate([self.row], sources=[page])['issues'], [])
+
+    def test_user_holdout_question_overlap_and_invalid_holdout(self):
+        holdout = [{'question': '  WHAT   is the example?  '}]
+        issues = self.validate([self.row], holdout=holdout)['issues']
+        self.assertTrue(any('user holdout' in issue for issue in issues))
+        with self.assertRaisesRegex(ValueError, 'holdout records'):
+            self.validate([self.row], holdout=[{}])
 
     def test_missing_fields_and_invalid_dates_are_reported(self):
         issues = self.validate([{}, dict(self.row, source_date='not-a-date')])['issues']
