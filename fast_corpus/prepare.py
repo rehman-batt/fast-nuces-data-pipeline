@@ -1,5 +1,6 @@
 """Validate, deduplicate and prepare source-linked retrieval chunks."""
 import json
+import logging
 from hashlib import sha256
 import os
 from pathlib import Path
@@ -7,6 +8,8 @@ import re
 import tempfile
 from .schema import validate_page
 from .tables import table_passages
+
+LOG = logging.getLogger(__name__)
 
 
 def _read_page(line, line_number):
@@ -31,6 +34,9 @@ def prepare(source, destination, chunk_size=1200, overlap=150):
             table_sources = {}
             for number, line in enumerate(src, start=1):
                 page = _read_page(line, number)
+                if page['needs_ocr_review']:
+                    LOG.warning('Skipping unreviewed OCR/empty PDF page %s: %s', page['page'], page['url'])
+                    continue
                 if not page['text'].strip():
                     continue
                 source_info = {'url': page['url'], 'title': page['title'], 'source_timestamp': page['timestamp'], 'timestamp_kind': page['timestamp_kind'], 'source_page': page['page'], 'content_type': page['content_type']}
@@ -49,7 +55,7 @@ def prepare(source, destination, chunk_size=1200, overlap=150):
                 for number, line in enumerate(src, start=1):
                     page = _read_page(line, number)
                     text = re.sub(r'[ \t]+', ' ', page['text']).strip()
-                    if not text:
+                    if not text or page['needs_ocr_review']:
                         continue
                     primary = sources_by_hash[page['sha256']][0]
                     if page['sha256'] not in seen:
