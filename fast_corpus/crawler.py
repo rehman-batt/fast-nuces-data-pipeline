@@ -151,6 +151,36 @@ class Crawler:
         return parser is not None and parser.can_fetch(self.ua, url)
 
     def crawl(self, seed, output, limit, sitemaps=(), max_attempts=100, max_queued=1000):
+        """Write a new pages file and companion log without overwriting runs."""
+        if not normalize(seed) or not self.in_scope(normalize(seed)):
+            raise ValueError("Seed must be an HTTP(S) URL on an allowed host")
+        if limit < 1 or max_attempts < 1 or max_queued < 1:
+            raise ValueError("Page, attempt and queue limits must be positive")
+        output = Path(output)
+        log_path = Path(str(output) + ".log")
+        output.parent.mkdir(parents=True, exist_ok=True)
+        # Exclusive creation protects prior runs; create both files before requests.
+        with output.open("x", encoding="utf-8") as out:
+            try:
+                handler = logging.FileHandler(log_path, mode="x", encoding="utf-8")
+            except Exception:
+                # The empty file was just created by this run.
+                output.unlink()
+                raise
+            handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+            previous_level = LOG.level
+            LOG.setLevel(logging.INFO)
+            LOG.addHandler(handler)
+            try:
+                count = self._crawl(seed, out, limit, sitemaps, max_attempts, max_queued)
+                LOG.info("Run finished: collected %s pages", count)
+                return count
+            finally:
+                LOG.removeHandler(handler)
+                LOG.setLevel(previous_level)
+                handler.close()
+
+    def _crawl(self, seed, out, limit, sitemaps=(), max_attempts=100, max_queued=1000):
         seed = normalize(seed)
         if not seed or not self.in_scope(seed):
             raise ValueError("Seed must be an HTTP(S) URL on an allowed host")
@@ -179,60 +209,59 @@ class Crawler:
                 LOG.warning("Sitemap unavailable: %s: %s", sitemap, exc)
             except (URLError, TimeoutError, OSError, ValueError) as exc:
                 LOG.warning("Sitemap unavailable: %s: %s", sitemap, exc)
-        output = Path(output)
-        output.parent.mkdir(parents=True, exist_ok=True)
-        with output.open("w", encoding="utf-8") as out:
-            while queue and count < limit and attempts < max_attempts:
-                url = queue.popleft()
-                queued.discard(url)
-                if url in seen:
-                    continue
-                seen.add(url)
-                if not self.in_scope(url) or not self.permitted(url):
-                    LOG.info("Skipped by scope or robots: %s", url)
-                    continue
-                attempts += 1
-                try:
-                    with self.request(url) as response:
-                        kind = response.headers.get_content_type()
-                        if kind not in {"text/html", "application/xhtml+xml"}:
-                            continue
-                        raw = response.read(self.max_bytes + 1)
-                        if len(raw) > self.max_bytes:
-                            LOG.warning("Page too large: %s", url)
-                            continue
-                        charset = response.headers.get_content_charset() or "utf-8"
-                        try:
-                            html = raw.decode(charset, "replace")
-                        except LookupError:
-                            html = raw.decode("utf-8", "replace")
-                except HTTPError as exc:
-                    if exc.code in (301, 302, 303, 307, 308) and exc.headers.get("Location"):
-                        target = normalize(exc.headers["Location"], url)
-                        if target and self.in_scope(target) and target not in seen and target not in queued and len(queue) < max_queued:
-                            queue.appendleft(target)
-                            queued.add(target)
-                    else:
-                        LOG.warning("HTTP %s: %s", exc.code, url)
-                        if exc.code == 429 or 500 <= exc.code <= 599:
-                            LOG.warning("Stopping after server error or rate limit")
-                            break
-                    continue
-                except (URLError, TimeoutError, OSError) as exc:
-                    LOG.warning("Fetch failed: %s: %s", url, exc)
-                    continue
-                parser = PageParser()
-                parser.feed(html)
-                text = parser.text()
-                for link in parser.links:
-                    target = normalize(link, url)
+        while queue and count < limit and attempts < max_attempts:
+            url = queue.popleft()
+            queued.discard(url)
+            if url in seen:
+                continue
+            seen.add(url)
+            if not self.in_scope(url) or not self.permitted(url):
+                LOG.info("Skipped by scope or robots: %s", url)
+                continue
+            attempts += 1
+            try:
+                with self.request(url) as response:
+                    kind = response.headers.get_content_type()
+                    if kind not in {"text/html", "application/xhtml+xml"}:
+                        LOG.info("Skipped content type %s: %s", kind, url)
+                        continue
+                    raw = response.read(self.max_bytes + 1)
+                    if len(raw) > self.max_bytes:
+                        LOG.warning("Page too large: %s", url)
+                        continue
+                    charset = response.headers.get_content_charset() or "utf-8"
+                    try:
+                        html = raw.decode(charset, "replace")
+                    except LookupError:
+                        html = raw.decode("utf-8", "replace")
+            except HTTPError as exc:
+                if exc.code in (301, 302, 303, 307, 308) and exc.headers.get("Location"):
+                    target = normalize(exc.headers["Location"], url)
                     if target and self.in_scope(target) and target not in seen and target not in queued and len(queue) < max_queued:
-                        queue.append(target)
+                        queue.appendleft(target)
                         queued.add(target)
-                if not text:
-                    continue
-                record = {"url": url, "title": " ".join(parser.title), "crawled_at": datetime.now(timezone.utc).isoformat(), "content_type": kind, "sha256": sha256(text.encode()).hexdigest(), "text": text}
-                out.write(json.dumps(record, ensure_ascii=False) + "\n")
-                count += 1
-                LOG.info("Collected %s (%s/%s)", url, count, limit)
+                else:
+                    LOG.warning("HTTP %s: %s", exc.code, url)
+                    if exc.code == 429 or 500 <= exc.code <= 599:
+                        LOG.warning("Stopping after server error or rate limit")
+                        break
+                continue
+            except (URLError, TimeoutError, OSError) as exc:
+                LOG.warning("Fetch failed: %s: %s", url, exc)
+                continue
+            parser = PageParser()
+            parser.feed(html)
+            text = parser.text()
+            for link in parser.links:
+                target = normalize(link, url)
+                if target and self.in_scope(target) and target not in seen and target not in queued and len(queue) < max_queued:
+                    queue.append(target)
+                    queued.add(target)
+            if not text:
+                LOG.info("Skipped empty page: %s", url)
+                continue
+            record = {"url": url, "title": " ".join(parser.title), "crawled_at": datetime.now(timezone.utc).isoformat(), "content_type": kind, "sha256": sha256(text.encode()).hexdigest(), "text": text}
+            out.write(json.dumps(record, ensure_ascii=False) + "\n")
+            count += 1
+            LOG.info("Collected %s (%s/%s)", url, count, limit)
         return count

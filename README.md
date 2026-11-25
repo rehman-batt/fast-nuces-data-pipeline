@@ -18,7 +18,7 @@ python3 -m fast_corpus.cli crawl --user-agent 'YourProjectBot/1.0 (contact: you@
 python3 -m fast_corpus.cli prepare
 ```
 
-Replace the contact information with your own. The crawl writes `data/pages.jsonl`; preparation writes `data/chunks.jsonl`. Both commands **overwrite** their output files. The `data/` directory is ignored by Git to avoid accidentally publishing collected content. Use `--help` on either command to see options. Run from the repository root, or install with `pip install -e .` and use the `fast-corpus` command.
+Replace the contact information with your own. The crawl writes `data/pages.jsonl`; preparation writes `data/chunks.jsonl`. The crawl refuses to overwrite an existing output or companion `.log` file; choose a new output path for each run. The preparation command **overwrites** its output file. The `data/` directory is ignored by Git to avoid accidentally publishing collected content. Use `--help` on either command to see options. Run from the repository root, or install with `pip install -e .` and use the `fast-corpus` command.
 
 The default allowlist is only `www.nu.edu.pk`. Explicitly add each host if needed, and review its rules first:
 
@@ -36,7 +36,7 @@ Each page line includes `url`, `title`, `crawled_at` (UTC), `content_type`, `sha
 
 - Check each host's current robots rules, terms, copyright and permission for your intended collection, training and publication. A public page is not necessarily licensed for model training or redistribution. Review personal information before use.
 - This is an HTML pilot, not a complete site mirror. It does not extract PDFs, OCR images, render JavaScript, parse sitemap indexes or compressed sitemaps, or extract tables as structured data. Optional `--sitemap` arguments support XML URL sets subject to host and robots checks. Its simple HTML parser can retain boilerplate or miss content. The page limit counts successfully extracted pages, not all attempted URLs.
-- Check sample pages and chunks against their sources. Verify current fees, dates, campus applicability, and conflicting or stale information with the university. The crawler's logs report skipped pages and failures; save them if you need an audit trail.
+- Check sample pages and chunks against their sources. Verify current fees, dates, campus applicability, and conflicting or stale information with the university. Each crawl writes a companion log with skipped pages and failures. Logs can include URLs and should be reviewed before sharing. Interrupted runs can leave partial output and are not automatically resumable.
 - The pipeline extracts text rather than preserving raw HTML. Exact-text hashes do not detect near-duplicates, and character-based chunks can split context. These limitations should be addressed before production use.
 - Avoid committing collected text until you have reviewed rights and privacy implications. Examples and tests in this repository use synthetic data.
 
