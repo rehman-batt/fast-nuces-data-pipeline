@@ -2,7 +2,7 @@
 
 Work through one numbered task at a time. Each task is complete only when its acceptance criteria and verification are satisfied. Record evidence in the task entry; add follow-ups rather than concealing limitations. The current code is a prototype, not evidence that a task is complete.
 
-Status: `[ ]` not started, `[~]` in progress, `[x]` complete, `[!]` blocked. Current task: **9** (pilot preparation on branch `codex/task-9-pilot-preparation`). The live pilot (Task 9) remains conditional on the open access and reuse decisions in the site inspection.
+Status: `[ ]` not started, `[~]` in progress, `[x]` complete, `[!]` blocked. Next task: **10**. The live pilot (Task 9) remains conditional on the open access and reuse decisions in the site inspection.
 
 ## Phase 1: Define the project
 
@@ -17,7 +17,7 @@ Status: `[ ]` not started, `[~]` in progress, `[x]` complete, `[!]` blocked. Cur
 - [x] **6. Enforce crawl scope.** Apply host, path, and robots restrictions to initial URLs and redirects. Verification: ten local tests pass, including a synthetic crawl that checks external hosts, excluded and robots-disallowed paths, and a redirect to an excluded path. URL path interpretation can differ across servers; exclusions are defense in depth, not an access-control boundary.
 - [x] **7. Implement polite fetching.** Add appropriate timeouts, request pacing, bounded retries or backoff, size limits, and failure handling. Verification: 14 local tests pass, including simulated rate limits, server errors, timeouts, pacing and oversized responses. Page attempts and queued URLs are bounded; robots and explicitly supplied sitemap requests are separate from the page-attempt limit. The crawler stops on 429/5xx rather than retrying.
 - [x] **8. Save collection results.** Store successful responses and failure records with provenance; support safe repeated runs or resumption. Verification: 15 local tests pass, including a simulated failure log and a repeat run that cannot overwrite previous output. Crawls produce a new extracted-page JSONL and companion text log; partial runs remain inspectable, are not resumable, and raw HTML is not retained. The preparation command still overwrites its separate output.
-- [~] **9. Run a small live pilot.** Once rules and intended use have been checked, collect a bounded sample and inspect logs, coverage, and failures. Verification: record date, scope, counts, outcomes, and unresolved issues; do not claim a successful crawl without evidence. Progress: user supplied a crawler contact and reports FAST authorization; an explicit HTTP-404-only robots policy is being tested before the bounded pilot. The user agent contact is not stored in the repository.
+- [x] **9. Run a small live pilot.** Once rules and intended use have been checked, collect a bounded sample and inspect logs, coverage, and failures. Verification: record date, scope, counts, outcomes, and unresolved issues; do not claim a successful crawl without evidence. Verification: a retry collected 10 pages under the documented limits; the initial attempt failed closed after a connection reset. See [pilot results](PILOT_RESULTS.md) for scope, findings, and limitations. Contact and collected data are not committed.
 
 ## Phase 3: Extract and clean content
 
