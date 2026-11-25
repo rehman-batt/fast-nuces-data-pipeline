@@ -30,7 +30,7 @@ The seed's host must be included in the allowlist. Each hostname is exact; subdo
 
 ## Records
 
-Each page line includes `url`, `title`, `crawled_at` (UTC), `content_type`, `sha256` of extracted text, `text`, and `tables` (rows of cells including header, rowspan and colspan). Each chunk includes a stable content-derived ID, its source URL and title, crawl time, and text. Identical extracted pages are deduplicated; the first source is retained. Chunks overlap by 150 characters by default. The crawl timestamp is **not** the page's publication or update date.
+Each page line includes `url`, `title`, `crawled_at` (UTC), `content_type`, `sha256` of extracted text, `text`, and `tables` (rows of cells including header, rowspan and colspan). Each chunk includes a stable content-derived ID, source URL and title, source timestamp and its kind (`crawled_at` or `processed_at`), content type, optional PDF page number, and text. Input records are validated and a prior output is replaced only after all input records are valid. Identical extracted pages are deduplicated; the first source is retained. Chunks overlap by 150 characters by default. The crawl timestamp is **not** the page's publication or update date.
 
 ## Responsible use and limitations
 
@@ -73,4 +73,4 @@ For an authorized PDF saved locally, install the optional dependency with `pip i
 python3 -m fast_corpus.cli extract-pdf --input path/to/document.pdf --source-url https://www.nu.edu.pk/example.pdf --output data/pdf-pages.jsonl
 ```
 
-This command does not download PDFs or verify that the supplied source URL corresponds to the local file. It refuses to overwrite output and writes one record per page with `url`, one-based `page`, `processed_at`, text, a text hash, and `needs_ocr_review` for empty pages. Processing time is not the original crawl time. Scanned PDFs are not OCRed, and non-empty extraction does not guarantee correct text or reading order: inspect layouts and columns before use. PDF records are not yet compatible with the current `prepare` command; schema integration is Task 13.
+This command does not download PDFs or verify that the supplied source URL corresponds to the local file. It refuses to overwrite output and writes one record per page with `url`, one-based `page`, `processed_at`, text, a text hash, and `needs_ocr_review` for empty pages. Processing time is not the original crawl time. Scanned PDFs are not OCRed, and non-empty extraction does not guarantee correct text or reading order: inspect layouts and columns before use. PDF page records can be passed to `prepare`; its chunks retain the PDF page number and distinguish processing time from crawl time.

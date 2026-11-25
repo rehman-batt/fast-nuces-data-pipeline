@@ -9,6 +9,7 @@ except ImportError:
     pypdf = None
 
 from fast_corpus.pdf import extract_pdf
+from fast_corpus.prepare import prepare
 
 
 @unittest.skipUnless(pypdf, 'install the pdf extra to test PDF extraction')
@@ -27,6 +28,19 @@ class PdfTests(unittest.TestCase):
             self.assertTrue(all(row['url'] == 'https://www.nu.edu.pk/sample.pdf' for row in rows))
             with self.assertRaises(FileExistsError):
                 extract_pdf(fixture, 'https://www.nu.edu.pk/sample.pdf', output)
+
+    def test_pdf_page_can_be_prepared_with_provenance(self):
+        fixture = Path(__file__).parent / 'fixtures' / 'sample.pdf'
+        with tempfile.TemporaryDirectory() as tmp:
+            pages, chunks = Path(tmp) / 'pages.jsonl', Path(tmp) / 'chunks.jsonl'
+            extract_pdf(fixture, 'https://www.nu.edu.pk/sample.pdf', pages)
+            count, total = prepare(pages, chunks)
+            self.assertEqual((count, total), (1, 1))
+            row = json.loads(chunks.read_text())
+            self.assertEqual(row['source_page'], 1)
+            self.assertEqual(row['content_type'], 'application/pdf')
+            self.assertIn('source_timestamp', row)
+            self.assertEqual(row['timestamp_kind'], 'processed_at')
 
     def test_rejects_invalid_pdf_and_oversized_input(self):
         with tempfile.TemporaryDirectory() as tmp:
