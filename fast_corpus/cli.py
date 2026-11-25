@@ -27,6 +27,8 @@ def main():
     crawl.add_argument("--max-queued", type=int, default=1000, help="Maximum queued page URLs")
     crawl.add_argument("--delay", type=float, default=2.0)
     crawl.add_argument("--output", default="data/pages.jsonl")
+    crawl.add_argument("--assets-dir", default="data/assets", help="Directory for content-addressed raw responses")
+    crawl.add_argument("--max-asset-bytes", type=int, default=20_000_000, help="Maximum bytes per non-HTML response")
     prep = commands.add_parser("prepare", help="Deduplicate and chunk collected pages")
     prep.add_argument("--input", default="data/pages.jsonl")
     prep.add_argument("--output", default="data/chunks.jsonl")
@@ -76,7 +78,7 @@ def main():
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     try:
         if args.command == "crawl":
-            count = Crawler(args.host or ["www.nu.edu.pk"], args.user_agent, args.delay, excluded_paths=args.exclude_path, allow_missing_robots=args.allow_missing_robots).crawl(args.seed, args.output, args.limit, args.sitemap, args.max_attempts, args.max_queued)
+            count = Crawler(args.host or ["www.nu.edu.pk"], args.user_agent, args.delay, excluded_paths=args.exclude_path, allow_missing_robots=args.allow_missing_robots, assets_dir=args.assets_dir, max_asset_bytes=args.max_asset_bytes).crawl(args.seed, args.output, args.limit, args.sitemap, args.max_attempts, args.max_queued)
             print(f"Collected {count} pages to {args.output}")
         elif args.command == "inventory-import":
             count = import_pages(args.input, args.output)

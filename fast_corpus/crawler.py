@@ -185,11 +185,15 @@ class NoRedirect(HTTPRedirectHandler):
 
 
 class Crawler:
-    def __init__(self, hosts, user_agent, delay=2.0, timeout=20, max_bytes=2_000_000, excluded_paths=(), allow_missing_robots=False):
+    def __init__(self, hosts, user_agent, delay=2.0, timeout=20, max_bytes=2_000_000, excluded_paths=(), allow_missing_robots=False, assets_dir=None, max_asset_bytes=20_000_000):
         if not user_agent.strip() or "example.org/contact" in user_agent:
             raise ValueError("Provide a descriptive user agent with your contact information")
         if delay < 1:
             raise ValueError("Delay must be at least 1 second")
+        if max_asset_bytes < 1:
+            raise ValueError("Asset byte limit must be positive")
+        self.assets_dir = Path(assets_dir) if assets_dir is not None else None
+        self.max_asset_bytes = max_asset_bytes
         self.hosts = {h.lower() for h in hosts}
         if any(not path.startswith('/') or '?' in path or '#' in path for path in excluded_paths):
             raise ValueError("Excluded paths must begin with / and omit query and fragment")
@@ -217,7 +221,7 @@ class Crawler:
         if wait > 0:
             time.sleep(wait)
         self.last_request[origin] = time.monotonic()
-        return self.opener.open(Request(url, headers={"User-Agent": self.ua, "Accept": "text/html,application/xhtml+xml"}), timeout=self.timeout)
+        return self.opener.open(Request(url, headers={"User-Agent": self.ua, "Accept": "text/html,application/xhtml+xml,application/pdf,*/*;q=0.8"}), timeout=self.timeout)
 
     def permitted(self, url):
         parts = urlsplit(url)
@@ -245,6 +249,36 @@ class Crawler:
                 self.robots[origin] = None
         parser = self.robots[origin]
         return parser is not None and parser.can_fetch(self.ua, url)
+
+    def save_asset(self, url, raw, declared_type):
+        """Save exact response bytes under their digest, without replacing data."""
+        if self.assets_dir is None:
+            return
+        digest = sha256(raw).hexdigest()
+        if raw.startswith(b"%PDF-"):
+            signature = "pdf"
+        elif raw.startswith(b"PK\x03\x04"):
+            signature = "zip"
+        elif raw.startswith(b"\x89PNG\r\n\x1a\n"):
+            signature = "png"
+        elif raw.startswith(b"\xff\xd8\xff"):
+            signature = "jpeg"
+        else:
+            signature = "unknown"
+        self.assets_dir.mkdir(parents=True, exist_ok=True)
+        destination = self.assets_dir / digest
+        try:
+            with destination.open("xb") as stream:
+                try:
+                    stream.write(raw)
+                except BaseException:
+                    destination.unlink(missing_ok=True)
+                    raise
+        except FileExistsError:
+            if not destination.is_file() or sha256(destination.read_bytes()).hexdigest() != digest:
+                raise ValueError("Existing asset does not match its content hash")
+        self.record("asset_saved", url, content_type=declared_type, signature=signature,
+                    sha256=digest, bytes=len(raw), path=str(destination))
 
     def record(self, event, url, **details):
         if self.inventory is not None:
@@ -346,14 +380,19 @@ class Crawler:
                     declared = response.headers.get("Content-Type")
                     kind = response.headers.get_content_type() if declared else None
                     self.record("response", url, http_status=getattr(response, "status", 200), content_type=kind, declared_content_type=declared)
-                    if kind not in {"text/html", "application/xhtml+xml"}:
+                    is_html = kind in {"text/html", "application/xhtml+xml"}
+                    if not is_html and self.assets_dir is None:
                         self.record("skipped", url, reason="unsupported_content_type" if kind else "unknown_content_type", content_type=kind)
                         LOG.info("Skipped content type %s: %s", kind, url)
                         continue
-                    raw = response.read(self.max_bytes + 1)
-                    if len(raw) > self.max_bytes:
+                    byte_limit = self.max_bytes if is_html else self.max_asset_bytes
+                    raw = response.read(byte_limit + 1)
+                    if len(raw) > byte_limit:
                         self.record("skipped", url, reason="size_limit", content_type=kind)
-                        LOG.warning("Page too large: %s", url)
+                        LOG.warning("Response too large: %s", url)
+                        continue
+                    self.save_asset(url, raw, kind)
+                    if not is_html:
                         continue
                     charset = response.headers.get_content_charset() or "utf-8"
                     try:
