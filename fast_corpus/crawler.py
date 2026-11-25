@@ -12,6 +12,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urljoin, urlsplit, urlunsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 from urllib.robotparser import RobotFileParser
+from xml.etree import ElementTree
 
 LOG = logging.getLogger(__name__)
 USER_AGENT = "FASTCorpusBot/0.1 (+https://example.org/contact; replace before use)"
@@ -20,14 +21,36 @@ BREAKS = {"p", "div", "br", "li", "h1", "h2", "h3", "h4", "tr", "section", "arti
 
 
 def normalize(url, base=None):
-    parts = urlsplit(urljoin(base or url, url))
-    if parts.scheme.lower() not in {"http", "https"} or not parts.hostname or parts.username or parts.password:
+    try:
+        parts = urlsplit(urljoin(base or url, url))
+        if parts.scheme.lower() not in {"http", "https"} or not parts.hostname or parts.username or parts.password:
+            return None
+        host = parts.hostname.lower()
+        port = parts.port
+        if port and not ((parts.scheme.lower() == "https" and port == 443) or (parts.scheme.lower() == "http" and port == 80)):
+            host += f":{port}"
+        return urlunsplit((parts.scheme.lower(), host, parts.path or "/", parts.query, ""))
+    except ValueError:
+        # Invalid ports, malformed IPv6 literals, and other invalid URLs are
+        # ordinary untrusted page content and must not terminate a crawl.
         return None
-    host = parts.hostname.lower()
-    port = parts.port
-    if port and not ((parts.scheme.lower() == "https" and port == 443) or (parts.scheme.lower() == "http" and port == 80)):
-        host += f":{port}"
-    return urlunsplit((parts.scheme.lower(), host, parts.path or "/", parts.query, ""))
+
+
+def sitemap_urls(raw, base):
+    """Extract scoped candidates from a bounded sitemap URL set."""
+    if b"<!DOCTYPE" in raw.upper() or b"<!ENTITY" in raw.upper():
+        raise ValueError("Sitemap document types and entities are not supported")
+    try:
+        root = ElementTree.fromstring(raw)
+    except ElementTree.ParseError as exc:
+        raise ValueError("Invalid sitemap XML") from exc
+    if root.tag != "{http://www.sitemaps.org/schemas/sitemap/0.9}urlset":
+        raise ValueError("Only sitemap URL sets are supported")
+    for node in root.findall("{http://www.sitemaps.org/schemas/sitemap/0.9}url/{http://www.sitemaps.org/schemas/sitemap/0.9}loc"):
+        if node.text:
+            url = normalize(node.text.strip(), base)
+            if url:
+                yield url
 
 
 class PageParser(HTMLParser):
@@ -117,18 +140,35 @@ class Crawler:
         parser = self.robots[origin]
         return parser is not None and parser.can_fetch(self.ua, url)
 
-    def crawl(self, seed, output, limit):
+    def crawl(self, seed, output, limit, sitemaps=()):
         seed = normalize(seed)
         if not seed or not self.allowed_host(seed):
             raise ValueError("Seed must be an HTTP(S) URL on an allowed host")
         if limit < 1:
             raise ValueError("Page limit must be positive")
-        queue, seen, count = deque([seed]), set(), 0
+        queue, seen, queued, count = deque([seed]), set(), {seed}, 0
+        for sitemap in sitemaps:
+            sitemap = normalize(sitemap, seed)
+            if not sitemap or not self.allowed_host(sitemap) or not self.permitted(sitemap):
+                LOG.warning("Sitemap skipped by scope or robots: %s", sitemap)
+                continue
+            try:
+                with self.request(sitemap) as response:
+                    raw = response.read(self.max_bytes + 1)
+                    if len(raw) > self.max_bytes:
+                        raise ValueError("Sitemap exceeds size limit")
+                for target in sitemap_urls(raw, sitemap):
+                    if self.allowed_host(target) and target not in queued:
+                        queue.append(target)
+                        queued.add(target)
+            except (HTTPError, URLError, TimeoutError, OSError, ValueError) as exc:
+                LOG.warning("Sitemap unavailable: %s: %s", sitemap, exc)
         output = Path(output)
         output.parent.mkdir(parents=True, exist_ok=True)
         with output.open("w", encoding="utf-8") as out:
             while queue and count < limit:
                 url = queue.popleft()
+                queued.discard(url)
                 if url in seen:
                     continue
                 seen.add(url)
@@ -152,8 +192,9 @@ class Crawler:
                 except HTTPError as exc:
                     if exc.code in (301, 302, 303, 307, 308) and exc.headers.get("Location"):
                         target = normalize(exc.headers["Location"], url)
-                        if target and self.allowed_host(target):
+                        if target and self.allowed_host(target) and target not in seen and target not in queued:
                             queue.appendleft(target)
+                            queued.add(target)
                     else:
                         LOG.warning("HTTP %s: %s", exc.code, url)
                         if exc.code == 429 or 500 <= exc.code <= 599:
@@ -168,8 +209,9 @@ class Crawler:
                 text = parser.text()
                 for link in parser.links:
                     target = normalize(link, url)
-                    if target and self.allowed_host(target) and target not in seen:
+                    if target and self.allowed_host(target) and target not in seen and target not in queued:
                         queue.append(target)
+                        queued.add(target)
                 if not text:
                     continue
                 record = {"url": url, "title": " ".join(parser.title), "crawled_at": datetime.now(timezone.utc).isoformat(), "content_type": kind, "sha256": sha256(text.encode()).hexdigest(), "text": text}

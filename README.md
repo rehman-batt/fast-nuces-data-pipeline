@@ -35,7 +35,7 @@ Each page line includes `url`, `title`, `crawled_at` (UTC), `content_type`, `sha
 ## Responsible use and limitations
 
 - Check each host's current robots rules, terms, copyright and permission for your intended collection, training and publication. A public page is not necessarily licensed for model training or redistribution. Review personal information before use.
-- This is an HTML pilot, not a complete site mirror. It does not extract PDFs, OCR images, render JavaScript, parse sitemaps, or extract tables as structured data. Its simple HTML parser can retain boilerplate or miss content. The page limit counts successfully extracted pages, not all attempted URLs.
+- This is an HTML pilot, not a complete site mirror. It does not extract PDFs, OCR images, render JavaScript, parse sitemap indexes or compressed sitemaps, or extract tables as structured data. Optional `--sitemap` arguments support XML URL sets subject to host and robots checks. Its simple HTML parser can retain boilerplate or miss content. The page limit counts successfully extracted pages, not all attempted URLs.
 - Check sample pages and chunks against their sources. Verify current fees, dates, campus applicability, and conflicting or stale information with the university. The crawler's logs report skipped pages and failures; save them if you need an audit trail.
 - The pipeline extracts text rather than preserving raw HTML. Exact-text hashes do not detect near-duplicates, and character-based chunks can split context. These limitations should be addressed before production use.
 - Avoid committing collected text until you have reviewed rights and privacy implications. Examples and tests in this repository use synthetic data.
