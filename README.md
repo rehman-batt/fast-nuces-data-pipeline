@@ -12,7 +12,7 @@ This uses fictional example pages, creates temporary files, and retrieves a sour
 
 ## Pipeline
 
-`allowed URLs → robots check → bounded crawl → JSONL pages → exact deduplication → source-linked JSONL chunks`
+`allowed URLs → robots check → bounded crawl → JSONL pages → deduplicated source-linked chunks → local SQLite retrieval store`
 
 The crawler follows links only on explicitly allowed hosts, checks `robots.txt` separately for each origin, limits request rate and page size, and stops on a rate limit or server error. Redirect targets are checked against the same scope and robots rules. If robots cannot be retrieved—including a missing file or a redirect—the crawler skips that origin by default. `--allow-missing-robots` explicitly permits an HTTP 404 only; 403, 429, 5xx, redirects and network failures still fail closed. A missing file is not a content license. This intentionally conservative choice can mean zero pages are collected. The crawler does not bypass logins or access controls.
 
@@ -82,6 +82,20 @@ python3 -m fast_corpus.cli extract-pdf --input path/to/document.pdf --source-url
 ```
 
 This command does not download PDFs or verify that the supplied source URL corresponds to the local file. It refuses to overwrite output and writes one record per page with `url`, one-based `page`, `processed_at`, text, a text hash, and `needs_ocr_review` for empty pages. Processing time is not the original crawl time. Use `--ocr` to attempt OCR only on pages without native text; this requires `pdftoppm` and `tesseract` on PATH. A local rules-PDF spot check is documented in [OCR_CHECK.md](OCR_CHECK.md); its output remains unreviewed. OCR output is flagged `needs_ocr_review` and excluded from preparation and source-evidence validation until a human verifies and explicitly clears that flag. If text is corrected, recompute its SHA-256 before preparation. Non-empty extraction does not guarantee correct text or reading order: inspect layouts and columns before use. The default PDF input limit is 10,000,000 bytes and 100 pages; `--max-bytes` and `--max-pages` explicitly adjust them. PDF page records can be passed to `prepare`; its chunks retain the PDF page number and distinguish processing time from crawl time.
+
+## Persistent RAG data store
+
+Build a local SQLite full-text store from prepared chunks, then inspect and query it:
+
+```bash
+python3 -m fast_corpus.cli store-build --input data/chunks.jsonl --output data/rag-store.sqlite
+python3 -m fast_corpus.cli store-info --store data/rag-store.sqlite
+python3 -m fast_corpus.cli store-search --store data/rag-store.sqlite --query "library resources" --limit 5
+```
+
+This requires SQLite with FTS5. Each result retains its source URLs, source timestamp and kind, content type, and optional PDF page number. The store metadata records the input JSONL SHA-256 and chunk count. It validates chunk structure, rejects explicitly flagged unreviewed OCR, and builds a new snapshot before publishing it. Existing stores are protected by default; pass `--replace` only when deliberately rebuilding, in which case validation must succeed before the old store is replaced. Keep the database in the Git-ignored `data/` directory and review its contents before any sharing.
+
+This is a **lexical retrieval store**, using SQLite FTS5 with English Porter stemming. It is not a vector/embedding index, does not verify the truth or freshness of source text, and does not generate answers. It expects chunks created by the preparation pipeline; structural validation cannot detect a missing or falsified review flag. RAG answer generation, an appropriate model and any semantic index remain future work.
 
 ## Search baseline
 

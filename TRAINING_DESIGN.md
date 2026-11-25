@@ -17,3 +17,7 @@ Twelve illustrative examples (eleven training and one validation, from five sour
 Run `python3 -m fast_corpus.cli validate-training --input data/training-v4.jsonl --source-pages data/training-sources-v3.jsonl --holdout data/user-holdout-v2-2026-11-25.jsonl` to verify exact evidence excerpts in the local snapshot and check required fields, exact duplicate questions, source URLs appearing across splits, overlap with the public development questions and expected URLs, and exact question overlap with the supplied local user holdout. An exact text match does not prove evidence supports an answer; the validator cannot detect paraphrases, holdout source overlap without source labels, or URL aliases, verify permissions, or establish dataset quality; human review remains necessary.
 
 The current examples and evaluation are too small to justify a production training run. Do not represent this document as a completed dataset or a trained model.
+
+## Project direction update
+
+The user asked to prioritize the RAG data store and retrieval workflow before any fine-tuning. The local starter examples remain unused and Git-ignored. The user reported that the 12-example starter looked good, with no corrections provided; this is useful feedback but not evidence that the sample is large or complete enough for training. Fine-tuning and further training-data work are deferred until the RAG baseline is evaluated.
