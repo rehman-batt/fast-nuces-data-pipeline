@@ -14,3 +14,7 @@ A clean clone and synthetic run do not establish that the complete future corpus
 Use `python3 -m fast_corpus.cli manifest --input data/pages.jsonl --input data/chunks.jsonl --setting chunk_size=1200 --setting overlap=150 --output data/run-manifest.json` to record input basenames, sizes and SHA-256 hashes, explicit settings, Python/pypdf versions, timestamp, and the Git state of the current working directory. The manifest never overwrites an existing file. Use only non-secret settings; filenames and settings may themselves be sensitive. The Git status records tracked and untracked changes but ignores Git-ignored files. If the tree is dirty, a commit hash alone does not reproduce the run.
 
 Create the manifest at the time of the run; a later manifest does not prove which code or settings produced an earlier artifact. Hashes identify exact files but do not establish permission or correctness. Manifests are metadata only and do not include data or install dependencies. Full corpus and model-run reproducibility remains open.
+
+## Later clean-checkout check
+
+On 2026-11-25, a clean local clone at commit `71df507` ran all 48 tests with the bundled Python and PDF dependency, with Tesseract installed, and the offline synthetic demo returned its expected fictional source. This does not reproduce university collection or any model training. The local OCR output remains unreviewed.
