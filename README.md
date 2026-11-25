@@ -30,19 +30,19 @@ The seed's host must be included in the allowlist. Each hostname is exact; subdo
 
 ## Records
 
-Each page line includes `url`, `title`, `crawled_at` (UTC), `content_type`, `sha256` of extracted text, and `text`. Each chunk includes a stable content-derived ID, its source URL and title, crawl time, and text. Identical extracted pages are deduplicated; the first source is retained. Chunks overlap by 150 characters by default. The crawl timestamp is **not** the page's publication or update date.
+Each page line includes `url`, `title`, `crawled_at` (UTC), `content_type`, `sha256` of extracted text, `text`, and `tables` (rows of cells including header, rowspan and colspan). Each chunk includes a stable content-derived ID, its source URL and title, crawl time, and text. Identical extracted pages are deduplicated; the first source is retained. Chunks overlap by 150 characters by default. The crawl timestamp is **not** the page's publication or update date.
 
 ## Responsible use and limitations
 
 - Check each host's current robots rules, terms, copyright and permission for your intended collection, training and publication. A public page is not necessarily licensed for model training or redistribution. Review personal information before use.
-- This is an HTML pilot, not a complete site mirror. It does not extract PDFs, OCR images, render JavaScript, parse sitemap indexes or compressed sitemaps, or extract tables as structured data. Optional `--sitemap` arguments support XML URL sets subject to host and robots checks. Its simple HTML parser can retain boilerplate or miss content. The page limit counts successfully extracted pages, not all attempted URLs.
+- This is an HTML pilot, not a complete site mirror. It does not extract PDFs, OCR images, render JavaScript, parse sitemap indexes or compressed sitemaps, or extract nested tables. Page records include structured tables, but preparation currently uses only plain text, so chunks do not yet preserve table structure. Optional `--sitemap` arguments support XML URL sets subject to host and robots checks. Its simple HTML parser can retain boilerplate or miss content. The page limit counts successfully extracted pages, not all attempted URLs.
 - Check sample pages and chunks against their sources. Verify current fees, dates, campus applicability, and conflicting or stale information with the university. Each crawl writes a companion log with skipped pages and failures. Logs can include URLs and should be reviewed before sharing. Interrupted runs can leave partial output and are not automatically resumable.
 - The pipeline extracts text rather than preserving raw HTML. Exact-text hashes do not detect near-duplicates, and character-based chunks can split context. These limitations should be addressed before production use.
 - Avoid committing collected text until you have reviewed rights and privacy implications. Examples and tests in this repository use synthetic data.
 
 ## From corpus to assistant
 
-1. Inspect and clean a small crawl. Add PDF extraction and structured tables only where needed and permitted.
+1. Inspect and clean a small crawl. Add PDF extraction and table-aware chunks where needed and permitted.
 2. Index chunks with keyword and semantic retrieval; retain source links and dates in answers.
 3. Create a held-out question set across admissions, fees and campus policies. Measure retrieval quality and whether answers are supported by sources.
 4. If needed, create **reviewed** question-answer examples and compare fine-tuning plus retrieval against a retrieval-only baseline. Raw pages or these chunks are not ready-made supervised fine-tuning examples.
