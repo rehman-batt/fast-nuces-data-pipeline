@@ -50,7 +50,7 @@ Each page line includes `url`, `title`, `crawled_at` (UTC), `content_type`, `sha
 
 ## From corpus to assistant
 
-1. Inspect and clean a small crawl. Integrate local PDF records and table-aware chunks where needed and permitted.
+1. Inspect and clean collected content. Review PDF pages and table-aware chunks before using them.
 2. Index chunks with keyword and semantic retrieval; retain source links and dates in answers.
 3. Create a held-out question set across admissions, fees and campus policies. Measure retrieval quality and whether answers are supported by sources.
 4. If needed, create **reviewed** question-answer examples and compare fine-tuning plus retrieval against a retrieval-only baseline. Raw pages or these chunks are not ready-made supervised fine-tuning examples.
@@ -61,7 +61,7 @@ A portfolio write-up should report the crawl date, scope, observed coverage, lim
 
 The ordered roadmap and acceptance criteria are in [TASKS.md](TASKS.md). Agent-specific working instructions are in [AGENTS.md](AGENTS.md). We intend to complete and review one task at a time, with tests and documented results.
 
-This directory is a local Git repository. The GitHub remote is [rehman-batt/fast-nuces-data-pipeline](https://github.com/rehman-batt/fast-nuces-data-pipeline). The intended workflow is a focused branch and reviewable commit for each task, followed by a pull request once a GitHub repository is connected. Check `git status` and review changes before committing; keep collected data and credentials out of version control. The existing code is a prototype and is scheduled for review in Task 1.
+This directory is a local Git repository. The GitHub remote is [rehman-batt/fast-nuces-data-pipeline](https://github.com/rehman-batt/fast-nuces-data-pipeline). Changes use focused branches, reviewable commits and pull requests into protected `main`. Check `git status` and review changes before committing; keep collected data and credentials out of version control. The pipeline remains a prototype; see the task tracker for completed work and open evaluation and data-review tasks.
 
 ## Engineering practices
 
@@ -71,7 +71,7 @@ This directory is a local Git repository. The GitHub remote is [rehman-batt/fast
 - Preserve source provenance and document access and reuse decisions. Do not commit credentials, personal data, or unreviewed collected content.
 - Evaluate extraction and retrieval on a documented sample, reporting the methods, actual results, and limitations.
 
-The project currently has no runtime dependencies. For an isolated environment, install your operating system’s Python virtual-environment support and run `python3 -m venv .venv`; on the development machine, `ensurepip` was unavailable on 2026-11-25, so a pip-enabled environment has not yet been verified there. The tests also pass in an isolated `python3 -m venv --without-pip .venv` environment.
+The core pipeline has no third-party runtime dependencies; PDF extraction requires the optional `pypdf` package, and OCR also requires external tools. For an isolated environment, install your operating system’s Python virtual-environment support and run `python3 -m venv .venv`; on the development machine, `ensurepip` was unavailable on 2026-11-25, so a pip-enabled environment has not yet been verified there. The tests also pass in an isolated `python3 -m venv --without-pip .venv` environment.
 
 ## Local PDF extraction
 
