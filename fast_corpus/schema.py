@@ -32,4 +32,16 @@ def validate_page(record):
     title = record.get('title') or url
     if not isinstance(title, str):
         raise ValueError('title must be a string')
-    return {'url': url, 'title': title, 'timestamp': timestamp, 'timestamp_kind': 'crawled_at' if record.get('crawled_at') else 'processed_at', 'page': page, 'text': text, 'sha256': digest, 'content_type': content_type}
+    tables = record.get('tables', [])
+    if not isinstance(tables, list):
+        raise ValueError('tables must be a list')
+    for table in tables:
+        if not isinstance(table, dict) or not isinstance(table.get('rows'), list) or not isinstance(table.get('caption', ''), str):
+            raise ValueError('invalid table')
+        for row in table['rows']:
+            if not isinstance(row, list):
+                raise ValueError('invalid table row')
+            for cell in row:
+                if not isinstance(cell, dict) or not isinstance(cell.get('text'), str) or type(cell.get('header')) is not bool or any(type(cell.get(k)) is not int or not 1 <= cell[k] <= 100 for k in ('rowspan', 'colspan')):
+                    raise ValueError('invalid table cell')
+    return {'tables': tables, 'url': url, 'title': title, 'timestamp': timestamp, 'timestamp_kind': 'crawled_at' if record.get('crawled_at') else 'processed_at', 'page': page, 'text': text, 'sha256': digest, 'content_type': content_type}
