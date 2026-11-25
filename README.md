@@ -30,7 +30,7 @@ The seed's host must be included in the allowlist. Each hostname is exact; subdo
 
 ## Records
 
-Each page line includes `url`, `title`, `crawled_at` (UTC), `content_type`, `sha256` of extracted text, `text`, and `tables` (rows of cells including header, rowspan and colspan). Each chunk includes a stable content-derived ID, source URL and title, source timestamp and its kind (`crawled_at` or `processed_at`), content type, optional PDF page number, and text. Input records are validated and a prior output is replaced only after all input records are valid. Identical extracted pages are deduplicated; the first source is retained. Chunks overlap by 150 characters by default. The crawl timestamp is **not** the page's publication or update date.
+Each page line includes `url`, `title`, `crawled_at` (UTC), `content_type`, `sha256` of extracted text, `text`, and `tables` (rows of cells including header, rowspan and colspan). Each chunk includes a stable content-derived ID, source URL and title, source timestamp and its kind (`crawled_at` or `processed_at`), content type, optional PDF page number, and text. Input records are validated and a prior output is replaced only after all input records are valid. Identical extracted text is deduplicated, with all distinct source records retained in each chunk’s `sources` list. Near-duplicates are not merged. Chunks overlap by 150 characters by default. The crawl timestamp is **not** the page's publication or update date.
 
 ## Responsible use and limitations
 
