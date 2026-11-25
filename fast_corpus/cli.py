@@ -3,6 +3,8 @@ import logging
 from .crawler import Crawler
 from .prepare import prepare
 from .pdf import extract_pdf
+from .retrieval import Retriever, evaluate, load_jsonl
+import json
 
 
 def main():
@@ -29,12 +31,24 @@ def main():
     pdf.add_argument("--input", required=True)
     pdf.add_argument("--source-url", required=True)
     pdf.add_argument("--output", required=True)
+    search = commands.add_parser("search", help="Search prepared chunks with BM25")
+    search.add_argument("--input", default="data/chunks.jsonl")
+    search.add_argument("--query", required=True)
+    search.add_argument("--limit", type=int, default=5)
+    evaluation = commands.add_parser("evaluate", help="Measure source retrieval on development questions")
+    evaluation.add_argument("--input", default="data/chunks.jsonl")
+    evaluation.add_argument("--questions", default="evaluation/questions.jsonl")
+    evaluation.add_argument("--limit", type=int, default=5)
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     try:
         if args.command == "crawl":
             count = Crawler(args.host or ["www.nu.edu.pk"], args.user_agent, args.delay, excluded_paths=args.exclude_path, allow_missing_robots=args.allow_missing_robots).crawl(args.seed, args.output, args.limit, args.sitemap, args.max_attempts, args.max_queued)
             print(f"Collected {count} pages to {args.output}")
+        elif args.command == "search":
+            print(json.dumps(Retriever(load_jsonl(args.input)).search(args.query, args.limit), ensure_ascii=False, indent=2))
+        elif args.command == "evaluate":
+            print(json.dumps(evaluate(Retriever(load_jsonl(args.input)), load_jsonl(args.questions), args.limit), ensure_ascii=False, indent=2))
         elif args.command == "extract-pdf":
             pages = extract_pdf(args.input, args.source_url, args.output)
             print(f"Extracted {pages} PDF pages to {args.output}")

@@ -74,3 +74,7 @@ python3 -m fast_corpus.cli extract-pdf --input path/to/document.pdf --source-url
 ```
 
 This command does not download PDFs or verify that the supplied source URL corresponds to the local file. It refuses to overwrite output and writes one record per page with `url`, one-based `page`, `processed_at`, text, a text hash, and `needs_ocr_review` for empty pages. Processing time is not the original crawl time. Scanned PDFs are not OCRed, and non-empty extraction does not guarantee correct text or reading order: inspect layouts and columns before use. PDF page records can be passed to `prepare`; its chunks retain the PDF page number and distinguish processing time from crawl time.
+
+## Search baseline
+
+Prepare a local collection and run `python3 -m fast_corpus.cli search --input data/chunks.jsonl --query "How do I apply?"`. The in-memory BM25 baseline returns matching chunks and source metadata; it does not generate answers. Run `python3 -m fast_corpus.cli evaluate --input data/chunks.jsonl` to score pilot-covered development questions. The initial result and its limitations are documented in [evaluation/BASELINE.md](evaluation/BASELINE.md).
