@@ -12,7 +12,9 @@ This uses fictional example pages, creates temporary files, and retrieves a sour
 
 ## Pipeline
 
-`allowed URLs → robots check → bounded crawl → JSONL pages → deduplicated source-linked chunks → local SQLite retrieval store`
+`allowed URLs → robots check → bounded crawl → collected HTML + URL inventory`
+
+The current priority is comprehensive, auditable collection; retrieval and model training are deferred.
 
 The crawler follows links only on explicitly allowed hosts, checks `robots.txt` separately for each origin, limits request rate and page size, and stops on a rate limit or server error. Redirect targets are checked against the same scope and robots rules. If robots cannot be retrieved—including a missing file or a redirect—the crawler skips that origin by default. `--allow-missing-robots` explicitly permits an HTTP 404 only; 403, 429, 5xx, redirects and network failures still fail closed. A missing file is not a content license. This intentionally conservative choice can mean zero pages are collected. The crawler does not bypass logins or access controls.
 
@@ -26,7 +28,7 @@ python3 -m fast_corpus.cli crawl --user-agent 'YourProjectBot/1.0 (contact: you@
 python3 -m fast_corpus.cli prepare
 ```
 
-Replace the contact information with your own. The crawl writes `data/pages.jsonl`; preparation writes `data/chunks.jsonl`. The crawl refuses to overwrite an existing output or companion `.log` file; choose a new output path for each run. The preparation command **overwrites** its output file. The `data/` directory is ignored by Git to avoid accidentally publishing collected content. Use `--help` on either command to see options. Run from the repository root, or install with `pip install -e .` and use the `fast-corpus` command.
+Replace the contact information with your own. The crawl writes `data/pages.jsonl`; preparation writes `data/chunks.jsonl`. The crawl refuses to overwrite an existing output, companion `.log`, or `.inventory.jsonl` file; choose a new output path for each run. The preparation command **overwrites** its output file. The `data/` directory is ignored by Git to avoid accidentally publishing collected content. Use `--help` on either command to see options. Run from the repository root, or install with `pip install -e .` and use the `fast-corpus` command.
 
 The default allowlist is only `www.nu.edu.pk`. Explicitly add each host if needed, and review its rules first:
 
@@ -37,6 +39,8 @@ python3 -m fast_corpus.cli crawl --seed https://nu.edu.pk/ --host nu.edu.pk --us
 The seed's host must be included in the allowlist. Each hostname is exact; subdomains are not automatically included. The default delay is two seconds per origin, with a minimum of one second. The defaults also cap page fetch attempts at 100 and queued page URLs at 1,000; use `--max-attempts` and `--max-queued` to adjust them. Robots and explicitly provided sitemap requests are separate from the page-attempt limit. A 429 or 5xx stops the crawl rather than being retried. Query strings are retained, so use a small limit and inspect URLs before expanding scope. Repeat `--exclude-path /prefix` to exclude path prefixes; exclusions are defense in depth, not an access-control boundary, because server URL interpretation can differ.
 
 ## Records
+
+Each crawl also creates a non-overwriting `<output>.inventory.jsonl` event log. It records normalized discovered HTTP(S) URLs, their source, fetch attempts, response content types (including missing types), errors, skips, collected pages, and queued URLs left unattempted at a limit. Events are flushed as they occur, and an absent `run_finished` signals an incomplete run. The inventory can contain sensitive URLs and belongs in the Git-ignored `data/` directory. A response type is a server declaration, not proof of file contents; non-HTML bodies are not yet downloaded. Existing earlier runs have no such event log. Non-HTTP links, malformed URLs, JavaScript-generated links, and pages not reached are not represented.
 
 Each page line includes `url`, `title`, `crawled_at` (UTC), `content_type`, `sha256` of extracted text, `text`, and `tables` (rows of cells including header, rowspan and colspan). Each chunk includes a stable content-derived ID, source URL and title, source timestamp and its kind (`crawled_at` or `processed_at`), content type, optional PDF page number, and text. Input records are validated and a prior output is replaced only after all input records are valid. Identical extracted text is deduplicated, with all distinct source records retained in each chunk’s `sources` list. Near-duplicates are not merged. Text chunks overlap by 150 characters by default. Structured tables also produce `table_row` chunks with headers and source records. A table row longer than the configured chunk size stops preparation without replacing prior output; nested tables remain unsupported. The crawl timestamp is **not** the page's publication or update date.
 
