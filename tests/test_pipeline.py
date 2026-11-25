@@ -236,6 +236,26 @@ class PipelineTests(unittest.TestCase):
             self.assertTrue(all(row['url'] == page['url'] for row in rows))
             self.assertEqual(len({row['id'] for row in rows}), count)
 
+    def test_duplicates_preserve_distinct_sources(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            source, output = Path(tmp) / 'pages', Path(tmp) / 'chunks'
+            text = 'identical page content'
+            base = {'title': 'Page', 'crawled_at': '2026-11-25T10:00:00+00:00', 'content_type': 'text/html', 'sha256': sha256(text.encode()).hexdigest(), 'text': text}
+            rows = [dict(base, url='https://www.nu.edu.pk/'), dict(base, url='https://www.nu.edu.pk/Home')]
+            source.write_text(''.join(json.dumps(row) + '\n' for row in rows))
+            self.assertEqual(prepare(source, output), (1, 1))
+            chunk = json.loads(output.read_text())
+            self.assertEqual([item['url'] for item in chunk['sources']], [row['url'] for row in rows])
+
+    def test_similar_but_distinct_text_is_not_merged(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            source, output = Path(tmp) / 'pages', Path(tmp) / 'chunks'
+            rows = []
+            for text in ('Fees are 100', 'Fees are 200'):
+                rows.append({'url': 'https://www.nu.edu.pk/fees', 'title': 'Fees', 'crawled_at': '2026-11-25T10:00:00+00:00', 'content_type': 'text/html', 'sha256': sha256(text.encode()).hexdigest(), 'text': text})
+            source.write_text(''.join(json.dumps(row) + '\n' for row in rows))
+            self.assertEqual(prepare(source, output), (2, 2))
+
     def test_invalid_record_preserves_existing_output(self):
         with tempfile.TemporaryDirectory() as tmp:
             source, output = Path(tmp) / 'input', Path(tmp) / 'output'
