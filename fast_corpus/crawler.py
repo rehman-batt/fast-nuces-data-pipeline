@@ -10,7 +10,7 @@ from pathlib import Path
 import re
 import time
 from urllib.error import HTTPError, URLError
-from urllib.parse import unquote, urljoin, urlsplit, urlunsplit
+from urllib.parse import quote, unquote, urljoin, urlsplit, urlunsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 from urllib.robotparser import RobotFileParser
 from xml.etree import ElementTree
@@ -31,7 +31,7 @@ def normalize(url, base=None):
         port = parts.port
         if port and not ((parts.scheme.lower() == "https" and port == 443) or (parts.scheme.lower() == "http" and port == 80)):
             host += f":{port}"
-        return urlunsplit((parts.scheme.lower(), host, parts.path or "/", parts.query, ""))
+        return urlunsplit((parts.scheme.lower(), host, quote(parts.path or "/", safe="/%:@!$&'()*+,;=-._~"), parts.query, ""))
     except ValueError:
         # Invalid ports, malformed IPv6 literals, and other invalid URLs are
         # ordinary untrusted page content and must not terminate a crawl.

@@ -1,4 +1,5 @@
 import json
+from hashlib import sha256
 from email.message import Message
 from io import BytesIO
 from urllib.error import HTTPError
@@ -226,7 +227,7 @@ class PipelineTests(unittest.TestCase):
     def test_prepare_deduplicates_and_preserves_sources(self):
         with tempfile.TemporaryDirectory() as tmp:
             src, dst = Path(tmp) / 'pages.jsonl', Path(tmp) / 'chunks.jsonl'
-            page = {'url': 'https://www.nu.edu.pk/a', 'title': 'A', 'crawled_at': 'today', 'sha256': 'abc', 'text': 'alpha beta gamma delta epsilon'}
+            page = {'url': 'https://www.nu.edu.pk/a', 'title': 'A', 'crawled_at': '2026-11-25T10:00:00+00:00', 'content_type': 'text/html', 'sha256': sha256(b'alpha beta gamma delta epsilon').hexdigest(), 'text': 'alpha beta gamma delta epsilon'}
             src.write_text(json.dumps(page) + '\n' + json.dumps(page) + '\n', encoding='utf-8')
             pages, count = prepare(src, dst, 15, 3)
             rows = [json.loads(line) for line in dst.read_text().splitlines()]
@@ -234,6 +235,18 @@ class PipelineTests(unittest.TestCase):
             self.assertGreater(count, 1)
             self.assertTrue(all(row['url'] == page['url'] for row in rows))
             self.assertEqual(len({row['id'] for row in rows}), count)
+
+    def test_invalid_record_preserves_existing_output(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            source, output = Path(tmp) / 'input', Path(tmp) / 'output'
+            source.write_text('{"url":"https://www.nu.edu.pk/"}\n')
+            output.write_text('prior data')
+            with self.assertRaisesRegex(ValueError, 'line 1'):
+                prepare(source, output)
+            self.assertEqual(output.read_text(), 'prior data')
+
+    def test_url_spaces_are_encoded(self):
+        self.assertEqual(normalize('/Admissions/Admission Information.pdf', 'https://www.nu.edu.pk/'), 'https://www.nu.edu.pk/Admissions/Admission%20Information.pdf')
 
     def test_invalid_chunk_options(self):
         with self.assertRaises(ValueError):
