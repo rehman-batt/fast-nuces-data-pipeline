@@ -43,16 +43,23 @@ def load_jsonl(path):
         return [json.loads(line) for line in handle if line.strip()]
 
 
-def evaluate(retriever, questions, limit=5):
+def evaluate(retriever, questions, limit=5, scope="pilot"):
     indexed_urls = {source['url'] for chunk in retriever.chunks for source in chunk.get('sources', [{'url': chunk['url']}])}
-    results = []
+    if scope not in {'pilot', 'indexed'}:
+        raise ValueError('scope must be pilot or indexed')
+    results, excluded = [], []
     for case in questions:
-        if case['pilot_status'] != 'in_corpus':
-            continue
         expected = set(case['expected_urls'])
-        if not expected & indexed_urls:
-            raise ValueError(f"Expected source missing from index for {case['id']}")
+        present = bool(expected & indexed_urls)
+        if scope == 'pilot' and case['pilot_status'] != 'in_corpus':
+            excluded.append(case['id'])
+            continue
+        if not present:
+            if scope == 'pilot':
+                raise ValueError(f"Expected source missing from index for {case['id']}")
+            excluded.append(case['id'])
+            continue
         found = retriever.search(case['question'], limit)
         urls = {source['url'] for item in found for source in item['chunk'].get('sources', [{'url': item['chunk']['url']}])}
         results.append({'id': case['id'], 'hit': bool(expected & urls), 'retrieved_urls': sorted(urls)})
-    return {'eligible': len(results), 'hits': sum(row['hit'] for row in results), 'top_k': limit, 'results': results}
+    return {'scope': scope, 'eligible': len(results), 'excluded': excluded, 'hits': sum(row['hit'] for row in results), 'top_k': limit, 'results': results}

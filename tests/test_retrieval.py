@@ -18,6 +18,15 @@ class RetrievalTests(unittest.TestCase):
         search = Retriever([{'id': 'c', 'url': 'https://example.test/test', 'text': 'calculators are prohibited'}])
         self.assertEqual(search.search('calculator')[0]['chunk']['id'], 'c')
 
+    def test_indexed_scope_uses_current_source_coverage(self):
+        cases = [
+            {'id': '1', 'question': 'tuition fee', 'expected_urls': ['https://example.test/fees'], 'pilot_status': 'not_in_corpus'},
+            {'id': '2', 'question': 'missing', 'expected_urls': ['https://example.test/missing'], 'pilot_status': 'not_in_corpus'},
+        ]
+        result = evaluate(Retriever(self.chunks), cases, 1, scope='indexed')
+        self.assertEqual((result['hits'], result['eligible']), (1, 1))
+        self.assertEqual(result['excluded'], ['2'])
+
     def test_evaluation_counts_only_indexed_cases(self):
         cases = [
             {'id': '1', 'question': 'tuition fee', 'expected_urls': ['https://example.test/fees'], 'pilot_status': 'in_corpus'},
