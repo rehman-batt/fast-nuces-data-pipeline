@@ -33,6 +33,9 @@ def main():
     pdf.add_argument("--input", required=True)
     pdf.add_argument("--source-url", required=True)
     pdf.add_argument("--output", required=True)
+    pdf.add_argument("--max-bytes", type=int, default=10_000_000, help="Maximum input PDF bytes")
+    pdf.add_argument("--max-pages", type=int, default=100, help="Maximum PDF pages")
+    pdf.add_argument("--ocr", action="store_true", help="OCR pages with no native text; requires pdftoppm and tesseract")
     search = commands.add_parser("search", help="Search prepared chunks with BM25")
     search.add_argument("--input", default="data/chunks.jsonl")
     search.add_argument("--query", required=True)
@@ -69,7 +72,7 @@ def main():
         elif args.command == "evaluate":
             print(json.dumps(evaluate(Retriever(load_jsonl(args.input)), load_jsonl(args.questions), args.limit, args.scope), ensure_ascii=False, indent=2))
         elif args.command == "extract-pdf":
-            pages = extract_pdf(args.input, args.source_url, args.output)
+            pages = extract_pdf(args.input, args.source_url, args.output, max_bytes=args.max_bytes, ocr=args.ocr, max_pages=args.max_pages)
             print(f"Extracted {pages} PDF pages to {args.output}")
         else:
             pages, chunks = prepare(args.input, args.output, args.chunk_size, args.overlap)

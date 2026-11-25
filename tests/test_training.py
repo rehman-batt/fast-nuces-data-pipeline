@@ -36,6 +36,14 @@ class TrainingValidationTests(unittest.TestCase):
         self.assertTrue(any('evidence not found' in issue for issue in self.validate([altered], sources=[page])['issues']))
         self.assertTrue(any('evidence not found' in issue for issue in self.validate([self.row], sources=[])['issues']))
 
+    def test_unreviewed_ocr_is_not_accepted_as_evidence(self):
+        text = 'Example evidence. More information.'
+        page = {'url': self.row['source_url'], 'page': 1, 'processed_at': '2026-11-25T10:00:00+00:00', 'content_type': 'application/pdf', 'sha256': sha256(text.encode()).hexdigest(), 'text': text, 'needs_ocr_review': True}
+        issues = self.validate([self.row], sources=[page])['issues']
+        self.assertTrue(any('reviewed source snapshot' in issue for issue in issues))
+        page['needs_ocr_review'] = False
+        self.assertEqual(self.validate([self.row], sources=[page])['issues'], [])
+
     def test_missing_fields_and_invalid_dates_are_reported(self):
         issues = self.validate([{}, dict(self.row, source_date='not-a-date')])['issues']
         self.assertTrue(any('question' in issue for issue in issues))

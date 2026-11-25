@@ -44,4 +44,7 @@ def validate_page(record):
             for cell in row:
                 if not isinstance(cell, dict) or not isinstance(cell.get('text'), str) or type(cell.get('header')) is not bool or any(type(cell.get(k)) is not int or not 1 <= cell[k] <= 100 for k in ('rowspan', 'colspan')):
                     raise ValueError('invalid table cell')
-    return {'tables': tables, 'url': url, 'title': title, 'timestamp': timestamp, 'timestamp_kind': 'crawled_at' if record.get('crawled_at') else 'processed_at', 'page': page, 'text': text, 'sha256': digest, 'content_type': content_type}
+    review = record.get('needs_ocr_review', False)
+    if type(review) is not bool:
+        raise ValueError('needs_ocr_review must be a boolean')
+    return {'needs_ocr_review': review, 'tables': tables, 'url': url, 'title': title, 'timestamp': timestamp, 'timestamp_kind': 'crawled_at' if record.get('crawled_at') else 'processed_at', 'page': page, 'text': text, 'sha256': digest, 'content_type': content_type}
