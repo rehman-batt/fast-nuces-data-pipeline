@@ -2,7 +2,7 @@
 
 Work through one numbered task at a time. Each task is complete only when its acceptance criteria and verification are satisfied. Record evidence in the task entry; add follow-ups rather than concealing limitations. The current code is a prototype, not evidence that a task is complete.
 
-Status: `[ ]` not started, `[~]` in progress, `[x]` complete, `[!]` blocked. Next task: **7**. The live pilot (Task 9) remains conditional on the open access and reuse decisions in the site inspection.
+Status: `[ ]` not started, `[~]` in progress, `[x]` complete, `[!]` blocked. Next task: **8**. The live pilot (Task 9) remains conditional on the open access and reuse decisions in the site inspection.
 
 ## Phase 1: Define the project
 
@@ -15,7 +15,7 @@ Status: `[ ]` not started, `[~]` in progress, `[x]` complete, `[!]` blocked. Nex
 - [x] **4. Inspect site structure and access rules.** Record current robots rules, relevant terms, redirects, content types, and unresolved permissions for each proposed host. Verification: cite checked URLs and dates; do not infer permission from missing evidence. Read-only HTTP checks and unresolved permission questions are recorded in [site inspection](SITE_INSPECTION.md); no live crawl was performed.
 - [x] **5. Build URL discovery.** Discover links from approved starting pages and usable sitemaps. Verification: tests cover relative links, duplicate URLs, and unsupported schemes. Verification: nine local tests pass, including malformed URLs, duplicate links, sitemap parsing and host filtering. Sitemaps are optional URL sets; index and compressed sitemaps remain future work. The user reports FAST permission to use website data for a student chatbot; separate dataset redistribution is unconfirmed.
 - [x] **6. Enforce crawl scope.** Apply host, path, and robots restrictions to initial URLs and redirects. Verification: ten local tests pass, including a synthetic crawl that checks external hosts, excluded and robots-disallowed paths, and a redirect to an excluded path. URL path interpretation can differ across servers; exclusions are defense in depth, not an access-control boundary.
-- [ ] **7. Implement polite fetching.** Add appropriate timeouts, request pacing, bounded retries or backoff, size limits, and failure handling. Verification: deterministic tests simulate rate limits, server errors, timeouts, and oversized responses.
+- [x] **7. Implement polite fetching.** Add appropriate timeouts, request pacing, bounded retries or backoff, size limits, and failure handling. Verification: 14 local tests pass, including simulated rate limits, server errors, timeouts, pacing and oversized responses. Page attempts and queued URLs are bounded; robots and explicitly supplied sitemap requests are separate from the page-attempt limit. The crawler stops on 429/5xx rather than retrying.
 - [ ] **8. Save collection results.** Store successful responses and failure records with provenance; support safe repeated runs or resumption. Verification: tests cover persistence, failures, and repeat behavior; document retention and overwrite semantics.
 - [ ] **9. Run a small live pilot.** Once rules and intended use have been checked, collect a bounded sample and inspect logs, coverage, and failures. Verification: record date, scope, counts, outcomes, and unresolved issues; do not claim a successful crawl without evidence.
 

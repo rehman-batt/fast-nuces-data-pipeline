@@ -150,13 +150,15 @@ class Crawler:
         parser = self.robots[origin]
         return parser is not None and parser.can_fetch(self.ua, url)
 
-    def crawl(self, seed, output, limit, sitemaps=()):
+    def crawl(self, seed, output, limit, sitemaps=(), max_attempts=100, max_queued=1000):
         seed = normalize(seed)
         if not seed or not self.in_scope(seed):
             raise ValueError("Seed must be an HTTP(S) URL on an allowed host")
         if limit < 1:
             raise ValueError("Page limit must be positive")
-        queue, seen, queued, count = deque([seed]), set(), {seed}, 0
+        if max_attempts < 1 or max_queued < 1:
+            raise ValueError("Attempt and queue limits must be positive")
+        queue, seen, queued, count, attempts = deque([seed]), set(), {seed}, 0, 0
         for sitemap in sitemaps:
             sitemap = normalize(sitemap, seed)
             if not sitemap or not self.in_scope(sitemap) or not self.permitted(sitemap):
@@ -168,15 +170,19 @@ class Crawler:
                     if len(raw) > self.max_bytes:
                         raise ValueError("Sitemap exceeds size limit")
                 for target in sitemap_urls(raw, sitemap):
-                    if self.in_scope(target) and target not in queued:
+                    if self.in_scope(target) and target not in queued and len(queue) < max_queued:
                         queue.append(target)
                         queued.add(target)
-            except (HTTPError, URLError, TimeoutError, OSError, ValueError) as exc:
+            except HTTPError as exc:
+                if exc.code == 429 or 500 <= exc.code <= 599:
+                    raise ValueError(f"Sitemap request returned HTTP {exc.code}; stopping") from exc
+                LOG.warning("Sitemap unavailable: %s: %s", sitemap, exc)
+            except (URLError, TimeoutError, OSError, ValueError) as exc:
                 LOG.warning("Sitemap unavailable: %s: %s", sitemap, exc)
         output = Path(output)
         output.parent.mkdir(parents=True, exist_ok=True)
         with output.open("w", encoding="utf-8") as out:
-            while queue and count < limit:
+            while queue and count < limit and attempts < max_attempts:
                 url = queue.popleft()
                 queued.discard(url)
                 if url in seen:
@@ -185,6 +191,7 @@ class Crawler:
                 if not self.in_scope(url) or not self.permitted(url):
                     LOG.info("Skipped by scope or robots: %s", url)
                     continue
+                attempts += 1
                 try:
                     with self.request(url) as response:
                         kind = response.headers.get_content_type()
@@ -202,7 +209,7 @@ class Crawler:
                 except HTTPError as exc:
                     if exc.code in (301, 302, 303, 307, 308) and exc.headers.get("Location"):
                         target = normalize(exc.headers["Location"], url)
-                        if target and self.in_scope(target) and target not in seen and target not in queued:
+                        if target and self.in_scope(target) and target not in seen and target not in queued and len(queue) < max_queued:
                             queue.appendleft(target)
                             queued.add(target)
                     else:
@@ -219,7 +226,7 @@ class Crawler:
                 text = parser.text()
                 for link in parser.links:
                     target = normalize(link, url)
-                    if target and self.in_scope(target) and target not in seen and target not in queued:
+                    if target and self.in_scope(target) and target not in seen and target not in queued and len(queue) < max_queued:
                         queue.append(target)
                         queued.add(target)
                 if not text:
