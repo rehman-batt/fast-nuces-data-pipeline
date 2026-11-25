@@ -39,7 +39,7 @@ class StoreTests(unittest.TestCase):
     def test_bad_input_never_replaces_existing_store(self):
         build_store(self.source, self.store)
         before = self.store.read_bytes()
-        for rows in ([self.rows[0], self.rows[0]], [dict(self.rows[0], sources=[])], [dict(self.rows[0], source_timestamp='2020-01-01T00:00:00+00:00')], [dict(self.rows[0], needs_ocr_review=True)]):
+        for rows in ([self.rows[0], self.rows[0]], [dict(self.rows[0], sources=[])], [dict(self.rows[0], source_timestamp='2020-01-01T00:00:00+00:00')], [dict(self.rows[0], needs_ocr_review=True)], [dict(self.rows[0], kind='table_row')], [dict(self.rows[0], sources=[dict(self.rows[0]['sources'][0], needs_ocr_review=True)])]):
             with self.subTest(rows=rows):
                 self.write_rows(rows)
                 with self.assertRaises(ValueError):

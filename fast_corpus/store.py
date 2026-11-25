@@ -23,6 +23,8 @@ def _validate_chunk(row):
         raise ValueError('invalid timestamp_kind')
     if row.get('kind', 'text') not in ('text', 'table_row'):
         raise ValueError('unsupported chunk kind')
+    if row.get('kind') == 'table_row' and any(type(row.get(key)) is not int or row[key] < 0 for key in ('table_index', 'row_index')):
+        raise ValueError('table chunks require non-negative table_index and row_index')
     if row.get('needs_ocr_review', False) is not False:
         raise ValueError('unreviewed OCR cannot be indexed')
     def validate_source(source):
@@ -31,6 +33,8 @@ def _validate_chunk(row):
         for key in ('url', 'title', 'source_timestamp', 'timestamp_kind', 'content_type'):
             if not isinstance(source.get(key), str) or not source[key].strip():
                 raise ValueError(f'source {key} must be a non-empty string')
+        if source.get('needs_ocr_review', False) is not False:
+            raise ValueError('unreviewed OCR source cannot be indexed')
         parts = urlsplit(source['url'])
         if parts.scheme not in ('http', 'https') or not parts.hostname or parts.username or parts.password:
             raise ValueError('source URL must be HTTP(S) without credentials')
