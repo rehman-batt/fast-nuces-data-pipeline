@@ -38,7 +38,7 @@ Status: `[ ]` not started, `[~]` in progress, `[x]` complete, `[!]` blocked. Cur
 
 ## Phase 5: Evaluate and present
 
-- [ ] **21. Evaluate the assistant approach.** Compare retrieval-only with any fine-tuned approach using the same evaluation set. Verification: report method, evidence, limitations, and failure examples; if fine-tuning is deferred, report the baseline only.
+- [~] **21. Evaluate the assistant approach.** Compare retrieval-only with any fine-tuned approach using the same evaluation set. Verification: [passage review](evaluation/PASSAGE_REVIEW.md) records a small same-author review of the pilot retrieval baseline, including partial evidence and a miss. Model-answer comparison and an independent holdout remain open.
 - [~] **22. Make runs reproducible.** Document configuration, commands, schemas, and dataset or run versions. Verification: [clean-clone notes](REPRODUCIBILITY.md) document core tests, optional PDF dependency, a deterministic synthetic prepare/search run and pilot input hash. Full corpus and model-run reproducibility remains open.
 - [ ] **23. Polish the portfolio.** Present architecture, decisions, results, limitations, setup, and a concise demo. Verification: follow the README from a clean checkout and review all published content for rights and privacy.
 
