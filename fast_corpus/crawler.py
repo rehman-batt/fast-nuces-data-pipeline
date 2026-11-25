@@ -68,6 +68,10 @@ class PageParser(HTMLParser):
         attrs = dict(attrs)
         if tag == "a" and attrs.get("href"):
             self.links.append(attrs["href"])
+        if tag in {"iframe", "embed"} and attrs.get("src"):
+            self.links.append(attrs["src"])
+        if tag == "object" and attrs.get("data"):
+            self.links.append(attrs["data"])
         if tag == "title":
             self.in_title = True
         if self.skip:
@@ -195,6 +199,7 @@ class Crawler:
         self.opener = build_opener(NoRedirect())
         self.robots = {}
         self.last_request = {}
+        self.inventory = None
 
     def allowed_host(self, url):
         parts = urlsplit(url)
@@ -241,6 +246,12 @@ class Crawler:
         parser = self.robots[origin]
         return parser is not None and parser.can_fetch(self.ua, url)
 
+    def record(self, event, url, **details):
+        if self.inventory is not None:
+            row = {"event": event, "url": url, "at": datetime.now(timezone.utc).isoformat(), **details}
+            self.inventory.write(json.dumps(row, ensure_ascii=False) + "\n")
+            self.inventory.flush()
+
     def crawl(self, seed, output, limit, sitemaps=(), max_attempts=100, max_queued=1000):
         """Write a new pages file and companion log without overwriting runs."""
         if not normalize(seed) or not self.in_scope(normalize(seed)):
@@ -258,15 +269,27 @@ class Crawler:
                 # The empty file was just created by this run.
                 output.unlink()
                 raise
+            try:
+                inventory = Path(str(output) + ".inventory.jsonl").open("x", encoding="utf-8")
+            except Exception:
+                handler.close()
+                log_path.unlink()
+                output.unlink()
+                raise
+            self.inventory = inventory
             handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
             previous_level = LOG.level
             LOG.setLevel(logging.INFO)
             LOG.addHandler(handler)
             try:
+                self.record("run_started", normalize(seed), output=str(output))
                 count = self._crawl(seed, out, limit, sitemaps, max_attempts, max_queued)
+                self.record("run_finished", normalize(seed), collected=count)
                 LOG.info("Run finished: collected %s pages", count)
                 return count
             finally:
+                self.inventory = None
+                inventory.close()
                 LOG.removeHandler(handler)
                 LOG.setLevel(previous_level)
                 handler.close()
@@ -280,6 +303,7 @@ class Crawler:
         if max_attempts < 1 or max_queued < 1:
             raise ValueError("Attempt and queue limits must be positive")
         queue, seen, queued, count, attempts = deque([seed]), set(), {seed}, 0, 0
+        self.record("discovered", seed, source="seed")
         for sitemap in sitemaps:
             sitemap = normalize(sitemap, seed)
             if not sitemap or not self.in_scope(sitemap) or not self.permitted(sitemap):
@@ -291,9 +315,14 @@ class Crawler:
                     if len(raw) > self.max_bytes:
                         raise ValueError("Sitemap exceeds size limit")
                 for target in sitemap_urls(raw, sitemap):
+                    self.record("discovered", target, source=sitemap)
                     if self.in_scope(target) and target not in queued and len(queue) < max_queued:
                         queue.append(target)
                         queued.add(target)
+                    elif not self.in_scope(target):
+                        self.record("skipped", target, reason="out_of_scope")
+                    elif target not in queued:
+                        self.record("skipped", target, reason="queue_limit")
             except HTTPError as exc:
                 if exc.code == 429 or 500 <= exc.code <= 599:
                     raise ValueError(f"Sitemap request returned HTTP {exc.code}; stopping") from exc
@@ -307,17 +336,23 @@ class Crawler:
                 continue
             seen.add(url)
             if not self.in_scope(url) or not self.permitted(url):
+                self.record("skipped", url, reason="scope_or_robots")
                 LOG.info("Skipped by scope or robots: %s", url)
                 continue
             attempts += 1
+            self.record("attempted", url)
             try:
                 with self.request(url) as response:
-                    kind = response.headers.get_content_type()
+                    declared = response.headers.get("Content-Type")
+                    kind = response.headers.get_content_type() if declared else None
+                    self.record("response", url, http_status=getattr(response, "status", 200), content_type=kind, declared_content_type=declared)
                     if kind not in {"text/html", "application/xhtml+xml"}:
+                        self.record("skipped", url, reason="unsupported_content_type" if kind else "unknown_content_type", content_type=kind)
                         LOG.info("Skipped content type %s: %s", kind, url)
                         continue
                     raw = response.read(self.max_bytes + 1)
                     if len(raw) > self.max_bytes:
+                        self.record("skipped", url, reason="size_limit", content_type=kind)
                         LOG.warning("Page too large: %s", url)
                         continue
                     charset = response.headers.get_content_charset() or "utf-8"
@@ -326,11 +361,18 @@ class Crawler:
                     except LookupError:
                         html = raw.decode("utf-8", "replace")
             except HTTPError as exc:
+                self.record("http_error" if exc.code not in (301, 302, 303, 307, 308) else "redirect", url, http_status=exc.code)
                 if exc.code in (301, 302, 303, 307, 308) and exc.headers.get("Location"):
                     target = normalize(exc.headers["Location"], url)
+                    if target:
+                        self.record("discovered", target, source=url, via="redirect")
                     if target and self.in_scope(target) and target not in seen and target not in queued and len(queue) < max_queued:
                         queue.appendleft(target)
                         queued.add(target)
+                    elif target and not self.in_scope(target):
+                        self.record("skipped", target, reason="out_of_scope")
+                    elif target and target not in seen and target not in queued:
+                        self.record("skipped", target, reason="queue_limit")
                 else:
                     LOG.warning("HTTP %s: %s", exc.code, url)
                     if exc.code == 429 or 500 <= exc.code <= 599:
@@ -338,6 +380,7 @@ class Crawler:
                         break
                 continue
             except (URLError, TimeoutError, OSError) as exc:
+                self.record("fetch_failed", url, error_type=type(exc).__name__)
                 LOG.warning("Fetch failed: %s: %s", url, exc)
                 continue
             parser = PageParser()
@@ -347,14 +390,28 @@ class Crawler:
             text = parser.text()
             for link in parser.links:
                 target = normalize(link, url)
+                if target:
+                    self.record("discovered", target, source=url, via="link")
                 if target and self.in_scope(target) and target not in seen and target not in queued and len(queue) < max_queued:
                     queue.append(target)
                     queued.add(target)
+                elif target and not self.in_scope(target):
+                    self.record("skipped", target, reason="out_of_scope")
+                elif target and target not in seen and target not in queued:
+                    self.record("skipped", target, reason="queue_limit")
             if not text:
+                self.record("skipped", url, reason="empty_text", content_type=kind)
                 LOG.info("Skipped empty page: %s", url)
                 continue
             record = {"url": url, "title": " ".join(parser.title), "crawled_at": datetime.now(timezone.utc).isoformat(), "content_type": kind, "sha256": sha256(text.encode()).hexdigest(), "text": text, "tables": table_parser.tables}
             out.write(json.dumps(record, ensure_ascii=False) + "\n")
+            out.flush()
+            self.record("collected", url, content_type=kind, sha256=record["sha256"], output=str(out.name))
             count += 1
             LOG.info("Collected %s (%s/%s)", url, count, limit)
+        reason = "exhausted" if not queue else ("page_limit" if count >= limit else "attempt_limit" if attempts >= max_attempts else "stopped")
+        for remaining in queue:
+            if remaining not in seen:
+                self.record("not_attempted", remaining, reason=reason)
+        self.record("crawl_stopped", seed, reason=reason, attempts=attempts, collected=count)
         return count
