@@ -2,7 +2,7 @@
 
 Work through one numbered task at a time. Each task is complete only when its acceptance criteria and verification are satisfied. Record evidence in the task entry; add follow-ups rather than concealing limitations. The current code is a prototype, not evidence that a task is complete.
 
-Status: `[ ]` not started, `[~]` in progress, `[x]` complete, `[!]` blocked. Next task: **11**. The live pilot (Task 9) remains conditional on the open access and reuse decisions in the site inspection.
+Status: `[ ]` not started, `[~]` in progress, `[x]` complete, `[!]` blocked. Next task: **12**. The live pilot (Task 9) remains conditional on the open access and reuse decisions in the site inspection.
 
 ## Phase 1: Define the project
 
@@ -22,7 +22,7 @@ Status: `[ ]` not started, `[~]` in progress, `[x]` complete, `[!]` blocked. Nex
 ## Phase 3: Extract and clean content
 
 - [x] **10. Extract HTML content.** Preserve useful headings, paragraphs, lists, and links while removing boilerplate. Verification: 17 local tests pass, including nested breadcrumb, BOM, heading, list and link handling. One live schedule HTML sample was inspected: the extracted text begins with its heading and update date; table semantics remain Task 11. HTML extraction is heuristic, not a complete quality guarantee.
-- [ ] **11. Extract tables.** Preserve row and column relationships for relevant pages. Verification: tests cover representative tables and manual comparison with sources.
+- [x] **11. Extract tables.** Preserve row and column relationships for relevant pages. Verification: 19 local tests pass, including cell spans and crawl output. Compared selected rows with the admissions schedule and fee page HTML on 2026-11-25. Structured tables are in page records but not yet incorporated into retrieval chunks; nested tables are not extracted. Address table-aware chunks in Task 16.
 - [ ] **12. Handle PDFs.** Extract permitted text-based PDFs with page-level provenance. Verification: tests cover representative PDFs and extraction failures; document treatment of scanned documents.
 - [ ] **13. Normalize and validate documents.** Define and enforce a schema with source, collection time, content type, and relevant metadata. Verification: tests accept valid records and report malformed ones.
 - [ ] **14. Remove duplicates.** Detect exact duplicates and assess whether near-duplicate detection is needed; preserve provenance. Verification: tests cover duplicates, distinct documents, and source retention.
@@ -30,7 +30,7 @@ Status: `[ ]` not started, `[~]` in progress, `[x]` complete, `[!]` blocked. Nex
 
 ## Phase 4: Prepare model-ready data
 
-- [ ] **16. Chunk documents.** Preserve context and source references in bounded chunks. Verification: tests cover boundaries, overlap, short documents, and provenance.
+- [ ] **16. Chunk documents.** Preserve context, structured table relationships and source references in bounded chunks. Verification: tests cover boundaries, overlap, short documents, and provenance.
 - [ ] **17. Create an evaluation set.** Prepare reviewed questions with expected answers or supporting sources across relevant topics and campuses. Verification: inspect coverage and keep evaluation separate from training examples.
 - [ ] **18. Build a retrieval baseline.** Return source-linked passages for queries. Verification: measure retrieval on the held-out evaluation set and report method, results, and failures.
 - [ ] **19. Prepare fine-tuning examples.** If justified by the baseline, create reviewed, source-grounded examples and separate training and evaluation sets. Verification: inspect representative examples and document split methodology; otherwise record why this task is deferred.

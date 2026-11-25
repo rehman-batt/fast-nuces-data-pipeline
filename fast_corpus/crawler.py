@@ -107,6 +107,74 @@ class PageParser(HTMLParser):
         return "\n".join(line for line in lines if line)
 
 
+class TableParser(HTMLParser):
+    """Preserve table rows, cells, and spans without guessing merged headers."""
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.tables = []
+        self.depth = 0
+        self.table = None
+        self.row = None
+        self.cell = None
+        self.caption = None
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "table":
+            self.depth += 1
+            if self.depth == 1:
+                self.table = {"caption": "", "rows": []}
+            return
+        if self.depth != 1:
+            return
+        attrs = dict(attrs)
+        if tag == "caption":
+            self.caption = []
+        elif tag == "tr":
+            self.row = []
+        elif tag in {"td", "th"} and self.row is not None:
+            def span(name):
+                try:
+                    value = int(attrs.get(name) or 1)
+                    return value if 1 <= value <= 100 else 1
+                except ValueError:
+                    return 1
+            self.cell = {"header": tag == "th", "rowspan": span("rowspan"), "colspan": span("colspan"), "parts": []}
+        elif tag == "br" and self.cell is not None:
+            self.cell["parts"].append(" ")
+
+    def handle_data(self, data):
+        if self.depth != 1:
+            return
+        if self.cell is not None:
+            self.cell["parts"].append(data)
+        elif self.caption is not None:
+            self.caption.append(data)
+
+    def handle_endtag(self, tag):
+        if tag == "table":
+            if self.depth == 1 and self.table is not None:
+                if self.table["rows"]:
+                    self.tables.append(self.table)
+                self.table = None
+            if self.depth:
+                self.depth -= 1
+            return
+        if self.depth != 1:
+            return
+        if tag in {"td", "th"} and self.cell is not None and self.row is not None:
+            parts = self.cell.pop("parts")
+            self.cell["text"] = re.sub(r"\s+", " ", "".join(parts)).strip()
+            self.row.append(self.cell)
+            self.cell = None
+        elif tag == "tr" and self.row is not None:
+            if self.row:
+                self.table["rows"].append(self.row)
+            self.row = None
+        elif tag == "caption" and self.caption is not None:
+            self.table["caption"] = re.sub(r"\s+", " ", "".join(self.caption)).strip()
+            self.caption = None
+
+
 class NoRedirect(HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         return None
@@ -274,6 +342,8 @@ class Crawler:
                 continue
             parser = PageParser()
             parser.feed(html)
+            table_parser = TableParser()
+            table_parser.feed(html)
             text = parser.text()
             for link in parser.links:
                 target = normalize(link, url)
@@ -283,7 +353,7 @@ class Crawler:
             if not text:
                 LOG.info("Skipped empty page: %s", url)
                 continue
-            record = {"url": url, "title": " ".join(parser.title), "crawled_at": datetime.now(timezone.utc).isoformat(), "content_type": kind, "sha256": sha256(text.encode()).hexdigest(), "text": text}
+            record = {"url": url, "title": " ".join(parser.title), "crawled_at": datetime.now(timezone.utc).isoformat(), "content_type": kind, "sha256": sha256(text.encode()).hexdigest(), "text": text, "tables": table_parser.tables}
             out.write(json.dumps(record, ensure_ascii=False) + "\n")
             count += 1
             LOG.info("Collected %s (%s/%s)", url, count, limit)

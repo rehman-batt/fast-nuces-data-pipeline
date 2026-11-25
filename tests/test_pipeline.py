@@ -8,7 +8,7 @@ import tempfile
 import unittest
 from unittest.mock import Mock, patch
 
-from fast_corpus.crawler import Crawler, PageParser, normalize, sitemap_urls
+from fast_corpus.crawler import Crawler, PageParser, TableParser, normalize, sitemap_urls
 from fast_corpus.prepare import prepare
 
 
@@ -189,6 +189,30 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(parser.text(), 'Schedule\nDates\nFirst\nSecond')
         self.assertEqual(parser.links, ['/'])
         self.assertEqual(parser.title, ['Schedule'])
+
+    def test_table_extraction_preserves_rows_and_spans(self):
+        parser = TableParser()
+        parser.feed('<table><caption>Fees</caption><tr><th rowspan="2">Program</th><th colspan="2">Fee</th></tr><tr><td>BS</td><td>100</td></tr></table>')
+        table = parser.tables[0]
+        self.assertEqual(table['caption'], 'Fees')
+        self.assertEqual(table['rows'][0][0], {'text': 'Program', 'header': True, 'rowspan': 2, 'colspan': 1})
+        self.assertEqual(table['rows'][0][1]['colspan'], 2)
+        self.assertEqual([c['text'] for c in table['rows'][1]], ['BS', '100'])
+
+    def test_crawl_stores_structured_table(self):
+        class Response(BytesIO):
+            def __init__(self):
+                super().__init__(b'<h1>Fees</h1><table><tr><th>Program</th><th>Fee</th></tr><tr><td>BS</td><td>100</td></tr></table>')
+                self.headers = Message()
+                self.headers['Content-Type'] = 'text/html'
+        crawler = Crawler(['www.nu.edu.pk'], 'ExampleBot/1.0 (contact: team@example.com)')
+        crawler.permitted = lambda url: True
+        crawler.request = lambda url: Response()
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / 'pages.jsonl'
+            crawler.crawl('https://www.nu.edu.pk/', output, 1)
+            page = json.loads(output.read_text())
+        self.assertEqual([cell['text'] for cell in page['tables'][0]['rows'][1]], ['BS', '100'])
 
     def test_parser_removes_navigation_and_keeps_content(self):
         parser = PageParser()
