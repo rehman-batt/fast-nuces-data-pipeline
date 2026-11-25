@@ -174,6 +174,15 @@ class PipelineTests(unittest.TestCase):
             self.assertEqual(output.read_text(), 'prior data')
             self.assertIn('network timed out', log.read_text())
 
+    def test_missing_robots_policy_is_explicit_and_only_for_404(self):
+        for code, enabled, expected in ((404, False, False), (404, True, True), (403, True, False), (429, True, False), (503, True, False)):
+            with self.subTest(code=code, enabled=enabled):
+                crawler = Crawler(['www.nu.edu.pk'], 'ExampleBot/1.0 (contact: team@example.com)', allow_missing_robots=enabled)
+                def request(url):
+                    raise HTTPError(url, code, 'test', Message(), None)
+                crawler.request = request
+                self.assertEqual(crawler.permitted('https://www.nu.edu.pk/'), expected)
+
     def test_parser_removes_navigation_and_keeps_content(self):
         parser = PageParser()
         parser.feed('<title>FAST</title><nav>Menu</nav><h1>Admissions</h1><p>Apply now</p><script>bad()</script><a href="/fees">Fees</a>')

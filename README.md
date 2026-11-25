@@ -6,7 +6,7 @@ A small, dependency-free Python pipeline for collecting permitted public HTML pa
 
 `allowed URLs → robots check → bounded crawl → JSONL pages → exact deduplication → source-linked JSONL chunks`
 
-The crawler follows links only on explicitly allowed hosts, checks `robots.txt` separately for each origin, limits request rate and page size, and stops on a rate limit or server error. Redirect targets are checked against the same scope and robots rules. If robots cannot be retrieved—including a missing file or a redirect—the crawler skips that origin. This intentionally conservative choice can mean zero pages are collected. The crawler does not bypass logins or access controls.
+The crawler follows links only on explicitly allowed hosts, checks `robots.txt` separately for each origin, limits request rate and page size, and stops on a rate limit or server error. Redirect targets are checked against the same scope and robots rules. If robots cannot be retrieved—including a missing file or a redirect—the crawler skips that origin by default. `--allow-missing-robots` explicitly permits an HTTP 404 only; 403, 429, 5xx, redirects and network failures still fail closed. A missing file is not a content license. This intentionally conservative choice can mean zero pages are collected. The crawler does not bypass logins or access controls.
 
 ## Requirements and quick start
 
