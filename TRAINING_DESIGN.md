@@ -1,6 +1,6 @@
 # Fine-tuning data design
 
-Status: planning, not a training-ready dataset. The current corpus is a 10-page pilot; retrieval has only a small source-level development score, and no model answer quality has been evaluated. The user has not yet selected a model or platform; work is proceeding in a model-neutral format.
+Status: planning, not a training-ready dataset. The initial pilot contained 10 pages and a later run collected 25; retrieval has only a small source-level development score, and no model answer quality has been evaluated. The user has not yet selected a model or platform; work is proceeding in a model-neutral format.
 
 ## Proposed model-neutral record
 
@@ -12,8 +12,8 @@ The answer must be supported by the cited passage, distinguish missing informati
 
 Before a training run, select a model and deployment constraints; collect and review a sufficiently diverse, authorized corpus; establish an answer-quality baseline with retrieval; and decide whether fine-tuning improves behavior enough to justify the added complexity. Source-level retrieval hit rate alone does not demonstrate a need for fine-tuning. Model-specific costs, privacy and training requirements depend on the selected platform and must be checked then.
 
-Three illustrative examples (two training and one validation, from separate source URLs) are stored locally in the Git-ignored `data/training-starter.jsonl`. They passed the validator but are not a training-ready dataset.
+Eight illustrative examples (seven training and one validation, from three source URLs) are stored locally in the Git-ignored `data/training-expanded-2026-11-25.jsonl`. They passed the validator but are not a training-ready dataset.
 
-Run `python3 -m fast_corpus.cli validate-training --input data/training-starter.jsonl` to check required fields, exact duplicate questions, source URLs appearing across splits, and overlap with the public development questions and expected URLs. The validator cannot prove evidence supports an answer, detect paraphrases or URL aliases, verify permissions, or establish dataset quality; human review remains necessary.
+Run `python3 -m fast_corpus.cli validate-training --input data/training-expanded-2026-11-25.jsonl --source-pages data/expanded-2026-11-25.jsonl` to verify exact evidence excerpts in the local snapshot and check required fields, exact duplicate questions, source URLs appearing across splits, and overlap with the public development questions and expected URLs. An exact text match does not prove evidence supports an answer; the validator cannot detect paraphrases or URL aliases, verify permissions, or establish dataset quality; human review remains necessary.
 
-The current corpus, examples and evaluation are too small to justify a production training run. Do not represent this document as a completed dataset or a trained model.
+The current examples and evaluation are too small to justify a production training run. Do not represent this document as a completed dataset or a trained model.
