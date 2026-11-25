@@ -2,7 +2,7 @@
 
 Work through one numbered task at a time. Each task is complete only when its acceptance criteria and verification are satisfied. Record evidence in the task entry; add follow-ups rather than concealing limitations. The current code is a prototype, not evidence that a task is complete.
 
-Status: `[ ]` not started, `[~]` in progress, `[x]` complete, `[!]` blocked. Next task: **12**. The live pilot (Task 9) remains conditional on the open access and reuse decisions in the site inspection.
+Status: `[ ]` not started, `[~]` in progress, `[x]` complete, `[!]` blocked. Next task: **13**. The live pilot (Task 9) remains conditional on the open access and reuse decisions in the site inspection.
 
 ## Phase 1: Define the project
 
@@ -23,8 +23,8 @@ Status: `[ ]` not started, `[~]` in progress, `[x]` complete, `[!]` blocked. Nex
 
 - [x] **10. Extract HTML content.** Preserve useful headings, paragraphs, lists, and links while removing boilerplate. Verification: 17 local tests pass, including nested breadcrumb, BOM, heading, list and link handling. One live schedule HTML sample was inspected: the extracted text begins with its heading and update date; table semantics remain Task 11. HTML extraction is heuristic, not a complete quality guarantee.
 - [x] **11. Extract tables.** Preserve row and column relationships for relevant pages. Verification: 19 local tests pass, including cell spans and crawl output. Compared selected rows with the admissions schedule and fee page HTML on 2026-11-25. Structured tables are in page records but not yet incorporated into retrieval chunks; nested tables are not extracted. Address table-aware chunks in Task 16.
-- [ ] **12. Handle PDFs.** Extract permitted text-based PDFs with page-level provenance. Verification: tests cover representative PDFs and extraction failures; document treatment of scanned documents.
-- [ ] **13. Normalize and validate documents.** Define and enforce a schema with source, collection time, content type, and relevant metadata. Verification: tests accept valid records and report malformed ones.
+- [x] **12. Handle PDFs.** Extract permitted text-based PDFs with page-level provenance. Verification: 21 tests pass with the optional PDF dependency, including a synthetic two-page PDF, blank page, invalid file and size limit. A one-page FAST admissions PDF was rendered and compared with extracted text; multi-column reading order differs. The command processes local PDFs only, flags empty pages, and does not OCR or fetch PDFs. Integrate records with the rest of the pipeline in Task 13.
+- [ ] **13. Normalize and validate documents.** Define and enforce a schema with source, collection or processing time, content type, page number and relevant metadata; integrate local PDF records with preparation and encode spaces in discovered URLs. Verification: tests accept valid records and report malformed ones.
 - [ ] **14. Remove duplicates.** Detect exact duplicates and assess whether near-duplicate detection is needed; preserve provenance. Verification: tests cover duplicates, distinct documents, and source retention.
 - [ ] **15. Review content quality.** Compare a sample with source material and review privacy and reuse concerns. Verification: record sampling method, findings, and corrections or follow-ups.
 
