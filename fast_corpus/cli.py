@@ -4,6 +4,7 @@ from .crawler import Crawler
 from .prepare import prepare
 from .pdf import extract_pdf
 from .retrieval import Retriever, evaluate, load_jsonl
+from .training import validate_training
 import json
 
 
@@ -39,12 +40,20 @@ def main():
     evaluation.add_argument("--input", default="data/chunks.jsonl")
     evaluation.add_argument("--questions", default="evaluation/questions.jsonl")
     evaluation.add_argument("--limit", type=int, default=5)
+    validation = commands.add_parser("validate-training", help="Validate model-neutral training examples")
+    validation.add_argument("--input", required=True)
+    validation.add_argument("--evaluation", default="evaluation/questions.jsonl")
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     try:
         if args.command == "crawl":
             count = Crawler(args.host or ["www.nu.edu.pk"], args.user_agent, args.delay, excluded_paths=args.exclude_path, allow_missing_robots=args.allow_missing_robots).crawl(args.seed, args.output, args.limit, args.sitemap, args.max_attempts, args.max_queued)
             print(f"Collected {count} pages to {args.output}")
+        elif args.command == "validate-training":
+            result = validate_training(args.input, load_jsonl(args.evaluation))
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            if result['issues']:
+                parser.exit(1)
         elif args.command == "search":
             print(json.dumps(Retriever(load_jsonl(args.input)).search(args.query, args.limit), ensure_ascii=False, indent=2))
         elif args.command == "evaluate":
