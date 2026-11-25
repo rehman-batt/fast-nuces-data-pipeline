@@ -22,3 +22,22 @@ jobs:
         run: python -m pip install "pypdf>=6,<7"
       - name: Run unit tests
         run: python -m unittest discover -s tests -v
+
+  ocr-integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install OCR tools and PDF dependency
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends tesseract-ocr poppler-utils
+          python -m pip install "pypdf>=6,<7"
+      - name: Verify OCR tools
+        run: |
+          command -v tesseract
+          command -v pdftoppm
+      - name: Run synthetic OCR integration test
+        run: python -m unittest discover -s tests -p test_ocr_integration.py -v
