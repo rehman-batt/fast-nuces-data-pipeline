@@ -42,6 +42,7 @@ def main():
     evaluation.add_argument("--limit", type=int, default=5)
     validation = commands.add_parser("validate-training", help="Validate model-neutral training examples")
     validation.add_argument("--input", required=True)
+    validation.add_argument("--source-pages", help="Optional JSONL snapshot used to verify exact evidence text")
     validation.add_argument("--evaluation", default="evaluation/questions.jsonl")
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -50,7 +51,7 @@ def main():
             count = Crawler(args.host or ["www.nu.edu.pk"], args.user_agent, args.delay, excluded_paths=args.exclude_path, allow_missing_robots=args.allow_missing_robots).crawl(args.seed, args.output, args.limit, args.sitemap, args.max_attempts, args.max_queued)
             print(f"Collected {count} pages to {args.output}")
         elif args.command == "validate-training":
-            result = validate_training(args.input, load_jsonl(args.evaluation))
+            result = validate_training(args.input, load_jsonl(args.evaluation), load_jsonl(args.source_pages) if args.source_pages else None)
             print(json.dumps(result, ensure_ascii=False, indent=2))
             if result['issues']:
                 parser.exit(1)
