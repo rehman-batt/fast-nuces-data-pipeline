@@ -26,7 +26,7 @@ The default allowlist is only `www.nu.edu.pk`. Explicitly add each host if neede
 python3 -m fast_corpus.cli crawl --seed https://nu.edu.pk/ --host nu.edu.pk --user-agent 'YourProjectBot/1.0 (contact: you@example.com)' --limit 30
 ```
 
-The seed's host must be included in the allowlist. Each hostname is exact; subdomains are not automatically included. The default delay is two seconds per origin, with a minimum of one second. Query strings are retained, so use a small limit and inspect URLs before expanding scope. Repeat `--exclude-path /prefix` to exclude path prefixes; exclusions are defense in depth, not an access-control boundary, because server URL interpretation can differ.
+The seed's host must be included in the allowlist. Each hostname is exact; subdomains are not automatically included. The default delay is two seconds per origin, with a minimum of one second. The defaults also cap page fetch attempts at 100 and queued page URLs at 1,000; use `--max-attempts` and `--max-queued` to adjust them. Robots and explicitly provided sitemap requests are separate from the page-attempt limit. A 429 or 5xx stops the crawl rather than being retried. Query strings are retained, so use a small limit and inspect URLs before expanding scope. Repeat `--exclude-path /prefix` to exclude path prefixes; exclusions are defense in depth, not an access-control boundary, because server URL interpretation can differ.
 
 ## Records
 

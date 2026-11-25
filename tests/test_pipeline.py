@@ -6,6 +6,7 @@ from urllib.robotparser import RobotFileParser
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import Mock, patch
 
 from fast_corpus.crawler import Crawler, PageParser, normalize, sitemap_urls
 from fast_corpus.prepare import prepare
@@ -95,6 +96,66 @@ class PipelineTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             self.assertEqual(crawler.crawl('https://www.nu.edu.pk/', Path(tmp) / 'pages', 10), 1)
         self.assertEqual(fetched, ['https://www.nu.edu.pk/', 'https://www.nu.edu.pk/redirect'])
+
+    def test_page_attempts_are_bounded_after_failures(self):
+        class Response(BytesIO):
+            def __init__(self, content):
+                super().__init__(content)
+                self.headers = Message()
+                self.headers['Content-Type'] = 'text/html'
+        crawler = Crawler(['www.nu.edu.pk'], 'ExampleBot/1.0 (contact: team@example.com)')
+        crawler.permitted = lambda url: True
+        calls = []
+        def request(url):
+            calls.append(url)
+            if url.endswith('/'):
+                return Response(b'<p>Home</p><a href="/a">A</a><a href="/b">B</a>')
+            raise TimeoutError('simulated timeout')
+        crawler.request = request
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertEqual(crawler.crawl('https://www.nu.edu.pk/', Path(tmp) / 'pages', 10, max_attempts=2), 1)
+        self.assertEqual(len(calls), 2)
+
+    def test_rate_limit_stops_following_requests(self):
+        class Response(BytesIO):
+            def __init__(self, content):
+                super().__init__(content)
+                self.headers = Message()
+                self.headers['Content-Type'] = 'text/html'
+        for code in (429, 503):
+            with self.subTest(code=code), tempfile.TemporaryDirectory() as tmp:
+                crawler = Crawler(['www.nu.edu.pk'], 'ExampleBot/1.0 (contact: team@example.com)')
+                crawler.permitted = lambda url: True
+                calls = []
+                def request(url):
+                    calls.append(url)
+                    if url.endswith('/'):
+                        return Response(b'<p>Home</p><a href="/a">A</a><a href="/b">B</a>')
+                    raise HTTPError(url, code, 'error', Message(), None)
+                crawler.request = request
+                crawler.crawl('https://www.nu.edu.pk/', Path(tmp) / 'pages', 10)
+                self.assertEqual(len(calls), 2)
+
+    def test_oversized_page_is_skipped(self):
+        class Response(BytesIO):
+            def __init__(self):
+                super().__init__(b'x' * 21)
+                self.headers = Message()
+                self.headers['Content-Type'] = 'text/html'
+        crawler = Crawler(['www.nu.edu.pk'], 'ExampleBot/1.0 (contact: team@example.com)', max_bytes=20)
+        crawler.permitted = lambda url: True
+        crawler.request = lambda url: Response()
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertEqual(crawler.crawl('https://www.nu.edu.pk/', Path(tmp) / 'pages', 2), 0)
+
+    def test_request_pacing_is_per_origin(self):
+        crawler = Crawler(['www.nu.edu.pk'], 'ExampleBot/1.0 (contact: team@example.com)', delay=2)
+        crawler.opener.open = Mock(return_value=None)
+        with patch('fast_corpus.crawler.time.monotonic', side_effect=[10, 10, 10.5, 12]), patch('fast_corpus.crawler.time.sleep') as sleep:
+            crawler.request('https://www.nu.edu.pk/a')
+            crawler.request('https://www.nu.edu.pk/b')
+        sleep.assert_called_once_with(1.5)
+        self.assertEqual(crawler.opener.open.call_count, 2)
 
     def test_parser_removes_navigation_and_keeps_content(self):
         parser = PageParser()
