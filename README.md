@@ -77,4 +77,4 @@ This command does not download PDFs or verify that the supplied source URL corre
 
 ## Search baseline
 
-Prepare a local collection and run `python3 -m fast_corpus.cli search --input data/chunks.jsonl --query "How do I apply?"`. The in-memory BM25 baseline returns matching chunks and source metadata; it does not generate answers. Run `python3 -m fast_corpus.cli evaluate --input data/chunks.jsonl` to score pilot-covered development questions. The initial result and its limitations are documented in [evaluation/BASELINE.md](evaluation/BASELINE.md).
+Prepare a local collection and run `python3 -m fast_corpus.cli search --input data/chunks.jsonl --query "How do I apply?"`. The in-memory BM25 baseline applies a simple English trailing-`s` normalization and returns matching chunks and source metadata; it does not generate answers. Run `python3 -m fast_corpus.cli evaluate --input data/chunks.jsonl` to score pilot-covered development questions. The initial result and its limitations are documented in [evaluation/BASELINE.md](evaluation/BASELINE.md).

@@ -14,6 +14,10 @@ class RetrievalTests(unittest.TestCase):
         self.assertEqual(search.search('application online')[0]['chunk']['id'], 'b')
         self.assertEqual(search.search('unrelatedxyz'), [])
 
+    def test_singular_query_matches_plural_document(self):
+        search = Retriever([{'id': 'c', 'url': 'https://example.test/test', 'text': 'calculators are prohibited'}])
+        self.assertEqual(search.search('calculator')[0]['chunk']['id'], 'c')
+
     def test_evaluation_counts_only_indexed_cases(self):
         cases = [
             {'id': '1', 'question': 'tuition fee', 'expected_urls': ['https://example.test/fees'], 'pilot_status': 'in_corpus'},

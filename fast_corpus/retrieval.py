@@ -6,7 +6,9 @@ import re
 
 
 def tokenize(text):
-    return re.findall(r'[^\W_]+', text.casefold(), flags=re.UNICODE)
+    words = re.findall(r'[^\W_]+', text.casefold(), flags=re.UNICODE)
+    # A deliberately small English plural normalization, not a full stemmer.
+    return [word[:-1] if len(word) > 4 and word.endswith('s') and not word.endswith(('ss', 'us', 'is')) else word for word in words]
 
 
 class Retriever:
