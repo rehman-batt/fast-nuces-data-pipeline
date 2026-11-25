@@ -286,7 +286,7 @@ class Crawler:
             self.inventory.write(json.dumps(row, ensure_ascii=False) + "\n")
             self.inventory.flush()
 
-    def crawl(self, seed, output, limit, sitemaps=(), max_attempts=100, max_queued=1000):
+    def crawl(self, seed, output, limit, sitemaps=(), max_attempts=100, max_queued=1000, initial_urls=None, previously_attempted=()):
         """Write a new pages file and companion log without overwriting runs."""
         if not normalize(seed) or not self.in_scope(normalize(seed)):
             raise ValueError("Seed must be an HTTP(S) URL on an allowed host")
@@ -317,7 +317,7 @@ class Crawler:
             LOG.addHandler(handler)
             try:
                 self.record("run_started", normalize(seed), output=str(output))
-                count = self._crawl(seed, out, limit, sitemaps, max_attempts, max_queued)
+                count = self._crawl(seed, out, limit, sitemaps, max_attempts, max_queued, initial_urls, previously_attempted)
                 self.record("run_finished", normalize(seed), collected=count)
                 LOG.info("Run finished: collected %s pages", count)
                 return count
@@ -328,7 +328,7 @@ class Crawler:
                 LOG.setLevel(previous_level)
                 handler.close()
 
-    def _crawl(self, seed, out, limit, sitemaps=(), max_attempts=100, max_queued=1000):
+    def _crawl(self, seed, out, limit, sitemaps=(), max_attempts=100, max_queued=1000, initial_urls=None, previously_attempted=()):
         seed = normalize(seed)
         if not seed or not self.in_scope(seed):
             raise ValueError("Seed must be an HTTP(S) URL on an allowed host")
@@ -336,8 +336,22 @@ class Crawler:
             raise ValueError("Page limit must be positive")
         if max_attempts < 1 or max_queued < 1:
             raise ValueError("Attempt and queue limits must be positive")
-        queue, seen, queued, count, attempts = deque([seed]), set(), {seed}, 0, 0
-        self.record("discovered", seed, source="seed")
+        queue, seen, queued, count, attempts = deque(), set(previously_attempted), set(), 0, 0
+        candidates = [seed] if initial_urls is None else initial_urls
+        for candidate in candidates:
+            target = normalize(candidate)
+            if not target:
+                continue
+            self.record("discovered", target, source="seed" if initial_urls is None else "previous_inventory")
+            if target in seen or target in queued:
+                continue
+            if not self.in_scope(target):
+                self.record("skipped", target, reason="out_of_scope")
+            elif len(queue) >= max_queued:
+                self.record("skipped", target, reason="queue_limit")
+            else:
+                queue.append(target)
+                queued.add(target)
         for sitemap in sitemaps:
             sitemap = normalize(sitemap, seed)
             if not sitemap or not self.in_scope(sitemap) or not self.permitted(sitemap):

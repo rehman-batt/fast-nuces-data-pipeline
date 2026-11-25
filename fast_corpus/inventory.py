@@ -62,3 +62,24 @@ def report(paths):
                 if event == 'run_finished': completed += 1
     types = Counter(kind for _, kind in observed)
     return {'files': len(paths), 'completed_run_events': completed, 'historical_collected_events': historical, 'unique_discovered_urls': len(discovered), 'unique_attempted_urls': len(attempted), 'unique_collected_urls': len(collected), 'observed_url_content_types': dict(sorted(types.items())), 'event_counts': dict(sorted(events.items()))}
+
+
+def resume_frontier(paths):
+    """Recover discovered, never-attempted URLs from all supplied event logs."""
+    found, attempted = dict(), set()
+    for path in paths:
+        with Path(path).open(encoding="utf-8") as stream:
+            for number, line in enumerate(stream, 1):
+                try:
+                    row = json.loads(line)
+                    event, url = row["event"], row["url"]
+                    normalized = normalize(url)
+                    if not isinstance(event, str) or not normalized:
+                        raise ValueError("invalid event")
+                except (ValueError, KeyError, TypeError, json.JSONDecodeError) as exc:
+                    raise ValueError(f"Invalid inventory record in {path} at line {number}") from exc
+                if event == "discovered":
+                    found.setdefault(normalized, None)
+                elif event in ("attempted", "collected"):
+                    attempted.add(normalized)
+    return [url for url in found if url not in attempted], attempted

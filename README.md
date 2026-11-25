@@ -46,7 +46,17 @@ Each page line includes `url`, `title`, `crawled_at` (UTC), `content_type`, `sha
 
 ## Raw response collection
 
-The CLI saves exact response bytes under their SHA-256 in `data/assets/` by default, including HTML, PDFs and unknown formats. The inventory's `asset_saved` events associate each saved object with its source URL, declared content type, a limited signature guess, byte count and local path. Identical bodies share a file; existing files are verified before reuse and never overwritten. HTML remains limited to 2 MB; non-HTML responses default to 20 MB, adjustable with `--max-asset-bytes`. Oversized files are recorded as skipped. Files are not executed or automatically extracted. Crawls have bounded page attempts and do not yet resume automatically. Use `--assets-dir` to choose a different local destination, and keep assets out of Git and public distribution until authorized and reviewed.
+The CLI saves exact response bytes under their SHA-256 in `data/assets/` by default, including HTML, PDFs and unknown formats. The inventory's `asset_saved` events associate each saved object with its source URL, declared content type, a limited signature guess, byte count and local path. Identical bodies share a file; existing files are verified before reuse and never overwritten. HTML remains limited to 2 MB; non-HTML responses default to 20 MB, adjustable with `--max-asset-bytes`. Oversized files are recorded as skipped. Files are not executed or automatically extracted. Crawls have bounded page attempts and continuation is explicit. Use `--assets-dir` to choose a different local destination, and keep assets out of Git and public distribution until authorized and reviewed.
+
+## Continue a crawl
+
+Provide **every** inventory file from prior parts of the same crawl to avoid reattempting earlier URLs and retain links that exceeded a queue limit:
+
+```bash
+python3 -m fast_corpus.cli crawl --user-agent 'YourProjectBot/1.0 (contact: you@example.com)' --resume-from data/first.jsonl.inventory.jsonl --resume-from data/second.jsonl.inventory.jsonl --output data/third.jsonl
+```
+
+Use the same explicit host, exclusion and robots settings as the earlier crawl. The continuation processes previously discovered URLs that have never been attempted, still enforcing scope and current robots rules. It does not automatically retry an attempted URL, including a failure or an interruption during a request; review those separately. Include all prior files each time, including interrupted runs, and use a fresh output name. Links beyond the current queue cap remain in the inventory for a later continuation. Out-of-scope URLs can appear in pending counts but will not be fetched. This is not a full site-coverage guarantee.
 
 ## Collection inventory
 
@@ -63,7 +73,7 @@ Import validates the entire input and is idempotent for identical input and outp
 
 - Check each host's current robots rules, terms, copyright and permission for your intended collection, training and publication. A public page is not necessarily licensed for model training or redistribution. Review personal information before use.
 - This is an HTML pilot, not a complete site mirror. The crawler saves bounded non-HTML responses but does not extract or OCR them automatically or render JavaScript; it also cannot parse sitemap indexes or compressed sitemaps, or extract nested tables. Page records include structured tables. Preparation adds table-row chunks with header context while retaining ordinary text chunks; those ordinary chunks may still contain flattened table text, so retrieval evaluation must check source support. Optional `--sitemap` arguments support XML URL sets subject to host and robots checks. Its simple HTML parser can retain boilerplate or miss content. The page limit counts successfully extracted pages, not all attempted URLs.
-- Check sample pages and chunks against their sources. Verify current fees, dates, campus applicability, and conflicting or stale information with the university. Each crawl writes a companion log with skipped pages and failures. Logs can include URLs and should be reviewed before sharing. Interrupted runs can leave partial output and are not automatically resumable.
+- Check sample pages and chunks against their sources. Verify current fees, dates, campus applicability, and conflicting or stale information with the university. Each crawl writes a companion log with skipped pages and failures. Logs can include URLs and should be reviewed before sharing. Interrupted runs can leave partial output; continuation requires explicitly supplying previous inventory files.
 - The crawl saves raw response bytes in a local content-addressed directory alongside extracted HTML. Exact-text hashes do not detect near-duplicates, and character-based chunks can split context. These limitations should be addressed before production use.
 - Avoid committing collected text until you have reviewed rights and privacy implications. Examples and tests in this repository use synthetic data.
 
