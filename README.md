@@ -2,6 +2,14 @@
 
 A small, dependency-free Python pipeline for collecting permitted public HTML pages and turning them into source-linked text chunks. It is a starting point for a university information assistant and a portfolio demonstration of responsible data engineering. **It does not train a model or provide a finished chatbot.**
 
+## Try the offline demo
+
+```bash
+python3 -m fast_corpus.demo
+```
+
+This uses fictional example pages, creates temporary files, and retrieves a source-linked passage without network access or university data. It demonstrates retrieval only; it does not generate an answer.
+
 ## Pipeline
 
 `allowed URLs → robots check → bounded crawl → JSONL pages → exact deduplication → source-linked JSONL chunks`
