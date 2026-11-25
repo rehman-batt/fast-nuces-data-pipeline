@@ -2,6 +2,7 @@ import argparse
 import logging
 from .crawler import Crawler
 from .prepare import prepare
+from .pdf import extract_pdf
 
 
 def main():
@@ -24,12 +25,19 @@ def main():
     prep.add_argument("--output", default="data/chunks.jsonl")
     prep.add_argument("--chunk-size", type=int, default=1200)
     prep.add_argument("--overlap", type=int, default=150)
+    pdf = commands.add_parser("extract-pdf", help="Extract an authorized local PDF into page records")
+    pdf.add_argument("--input", required=True)
+    pdf.add_argument("--source-url", required=True)
+    pdf.add_argument("--output", required=True)
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     try:
         if args.command == "crawl":
             count = Crawler(args.host or ["www.nu.edu.pk"], args.user_agent, args.delay, excluded_paths=args.exclude_path, allow_missing_robots=args.allow_missing_robots).crawl(args.seed, args.output, args.limit, args.sitemap, args.max_attempts, args.max_queued)
             print(f"Collected {count} pages to {args.output}")
+        elif args.command == "extract-pdf":
+            pages = extract_pdf(args.input, args.source_url, args.output)
+            print(f"Extracted {pages} PDF pages to {args.output}")
         else:
             pages, chunks = prepare(args.input, args.output, args.chunk_size, args.overlap)
             print(f"Prepared {chunks} chunks from {pages} unique pages to {args.output}")

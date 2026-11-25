@@ -35,14 +35,14 @@ Each page line includes `url`, `title`, `crawled_at` (UTC), `content_type`, `sha
 ## Responsible use and limitations
 
 - Check each host's current robots rules, terms, copyright and permission for your intended collection, training and publication. A public page is not necessarily licensed for model training or redistribution. Review personal information before use.
-- This is an HTML pilot, not a complete site mirror. It does not extract PDFs, OCR images, render JavaScript, parse sitemap indexes or compressed sitemaps, or extract nested tables. Page records include structured tables, but preparation currently uses only plain text, so chunks do not yet preserve table structure. Optional `--sitemap` arguments support XML URL sets subject to host and robots checks. Its simple HTML parser can retain boilerplate or miss content. The page limit counts successfully extracted pages, not all attempted URLs.
+- This is an HTML pilot, not a complete site mirror. The crawler does not download PDFs, OCR images, or render JavaScript; it also cannot parse sitemap indexes or compressed sitemaps, or extract nested tables. Page records include structured tables, but preparation currently uses only plain text, so chunks do not yet preserve table structure. Optional `--sitemap` arguments support XML URL sets subject to host and robots checks. Its simple HTML parser can retain boilerplate or miss content. The page limit counts successfully extracted pages, not all attempted URLs.
 - Check sample pages and chunks against their sources. Verify current fees, dates, campus applicability, and conflicting or stale information with the university. Each crawl writes a companion log with skipped pages and failures. Logs can include URLs and should be reviewed before sharing. Interrupted runs can leave partial output and are not automatically resumable.
 - The pipeline extracts text rather than preserving raw HTML. Exact-text hashes do not detect near-duplicates, and character-based chunks can split context. These limitations should be addressed before production use.
 - Avoid committing collected text until you have reviewed rights and privacy implications. Examples and tests in this repository use synthetic data.
 
 ## From corpus to assistant
 
-1. Inspect and clean a small crawl. Add PDF extraction and table-aware chunks where needed and permitted.
+1. Inspect and clean a small crawl. Integrate local PDF records and table-aware chunks where needed and permitted.
 2. Index chunks with keyword and semantic retrieval; retain source links and dates in answers.
 3. Create a held-out question set across admissions, fees and campus policies. Measure retrieval quality and whether answers are supported by sources.
 4. If needed, create **reviewed** question-answer examples and compare fine-tuning plus retrieval against a retrieval-only baseline. Raw pages or these chunks are not ready-made supervised fine-tuning examples.
@@ -58,9 +58,19 @@ This directory is a local Git repository. The GitHub remote is [rehman-batt/fast
 ## Engineering practices
 
 - Keep changes focused, with one task per branch and pull request where practical. Run relevant checks and review the diff before merging.
-- Maintain meaningful automated tests. A GitHub Actions workflow is configured to run the test suite on pull requests; its first push run passed on Python 3.10 and 3.12. A pull-request run still needs verification.
+- Maintain meaningful automated tests. A GitHub Actions workflow is configured to run the test suite on pull requests; its first push run passed on Python 3.10 and 3.12. Pull-request checks have also passed.
 - Document setup, dependencies, configuration, commands, and run or dataset versions so results can be reproduced.
 - Preserve source provenance and document access and reuse decisions. Do not commit credentials, personal data, or unreviewed collected content.
 - Evaluate extraction and retrieval on a documented sample, reporting the methods, actual results, and limitations.
 
 The project currently has no runtime dependencies. For an isolated environment, install your operating system’s Python virtual-environment support and run `python3 -m venv .venv`; on the development machine, `ensurepip` was unavailable on 2026-11-25, so a pip-enabled environment has not yet been verified there. The tests also pass in an isolated `python3 -m venv --without-pip .venv` environment.
+
+## Local PDF extraction
+
+For an authorized PDF saved locally, install the optional dependency with `pip install -e '.[pdf]'`, then run:
+
+```bash
+python3 -m fast_corpus.cli extract-pdf --input path/to/document.pdf --source-url https://www.nu.edu.pk/example.pdf --output data/pdf-pages.jsonl
+```
+
+This command does not download PDFs or verify that the supplied source URL corresponds to the local file. It refuses to overwrite output and writes one record per page with `url`, one-based `page`, `processed_at`, text, a text hash, and `needs_ocr_review` for empty pages. Processing time is not the original crawl time. Scanned PDFs are not OCRed, and non-empty extraction does not guarantee correct text or reading order: inspect layouts and columns before use. PDF records are not yet compatible with the current `prepare` command; schema integration is Task 13.

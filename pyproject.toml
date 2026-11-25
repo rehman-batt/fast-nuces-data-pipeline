@@ -9,6 +9,9 @@ description = "A polite, reproducible public-web corpus pipeline for FAST-NUCES"
 requires-python = ">=3.10"
 dependencies = []
 
+[project.optional-dependencies]
+pdf = ["pypdf>=6,<7"]
+
 [project.scripts]
 fast-corpus = "fast_corpus.cli:main"
 
