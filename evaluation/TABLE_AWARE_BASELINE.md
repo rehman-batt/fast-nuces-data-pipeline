@@ -14,3 +14,7 @@ To rerun on the saved local snapshot:
 python3 -m fast_corpus.cli prepare --input data/curated-eval-pages-2026-11-25.jsonl --output data/curated-eval-chunks-retry.jsonl
 python3 -m fast_corpus.cli evaluate --input data/curated-eval-chunks-retry.jsonl --questions evaluation/questions.jsonl --limit 5
 ```
+
+## Development iteration: simple plural normalization
+
+On the exact same saved 344-chunk snapshot and nine public development questions, a deliberately simple trailing-`s` normalization changed the expected-source top-five count from 6/9 to 8/9; `admissions-09` remained a labeled-source miss. The test-pattern page appeared at rank three for the calculator question and contained the relevant note. This change was motivated partly by a failure observed in this development set, so the result is in-sample and is not an independent estimate of improvement. The heuristic is not a full stemmer and can conflate distinct words; use a separate unseen holdout and passage/answer review before drawing conclusions.
