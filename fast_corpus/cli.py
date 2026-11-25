@@ -11,6 +11,7 @@ def main():
     crawl.add_argument("--seed", default="https://www.nu.edu.pk/")
     crawl.add_argument("--host", action="append", default=[], help="Allowed hostname; repeat to add hosts")
     crawl.add_argument("--user-agent", required=True, help="Bot name and contact URL or email")
+    crawl.add_argument("--exclude-path", action="append", default=[], help="Exclude a path prefix; repeat to add exclusions")
     crawl.add_argument("--sitemap", action="append", default=[], help="Optional sitemap URL; repeat to add URL sets")
     crawl.add_argument("--limit", type=int, default=30)
     crawl.add_argument("--delay", type=float, default=2.0)
@@ -24,7 +25,7 @@ def main():
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     try:
         if args.command == "crawl":
-            count = Crawler(args.host or ["www.nu.edu.pk"], args.user_agent, args.delay).crawl(args.seed, args.output, args.limit, args.sitemap)
+            count = Crawler(args.host or ["www.nu.edu.pk"], args.user_agent, args.delay, excluded_paths=args.exclude_path).crawl(args.seed, args.output, args.limit, args.sitemap)
             print(f"Collected {count} pages to {args.output}")
         else:
             pages, chunks = prepare(args.input, args.output, args.chunk_size, args.overlap)

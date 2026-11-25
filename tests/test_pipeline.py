@@ -1,6 +1,8 @@
 import json
 from email.message import Message
 from io import BytesIO
+from urllib.error import HTTPError
+from urllib.robotparser import RobotFileParser
 from pathlib import Path
 import tempfile
 import unittest
@@ -70,6 +72,29 @@ class PipelineTests(unittest.TestCase):
             count = crawler.crawl('https://www.nu.edu.pk/', Path(tmp) / 'out.jsonl', 10)
         self.assertEqual(count, 2)
         self.assertEqual(fetched, ['https://www.nu.edu.pk/', 'https://www.nu.edu.pk/a'])
+
+    def test_excluded_paths_never_fetched_even_via_redirect(self):
+        class Response(BytesIO):
+            def __init__(self, content):
+                super().__init__(content)
+                self.headers = Message()
+                self.headers['Content-Type'] = 'text/html'
+        crawler = Crawler(['www.nu.edu.pk'], 'ExampleBot/1.0 (contact: team@example.com)', excluded_paths=['/private'])
+        fetched = []
+        robots = RobotFileParser()
+        robots.parse(['User-agent: *', 'Disallow: /blocked'])
+        crawler.robots['https://www.nu.edu.pk'] = robots
+        def request(url):
+            fetched.append(url)
+            if url.endswith('/'):
+                return Response(b'<p>Home</p><a href="/private/file">Private</a><a href="/%70rivate/hidden">Encoded</a><a href="/blocked">Robots</a><a href="/redirect">Redirect</a><a href="https://evil.test/">External</a>')
+            headers = Message()
+            headers['Location'] = '/private/file'
+            raise HTTPError(url, 302, 'redirect', headers, None)
+        crawler.request = request
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertEqual(crawler.crawl('https://www.nu.edu.pk/', Path(tmp) / 'pages', 10), 1)
+        self.assertEqual(fetched, ['https://www.nu.edu.pk/', 'https://www.nu.edu.pk/redirect'])
 
     def test_parser_removes_navigation_and_keeps_content(self):
         parser = PageParser()
