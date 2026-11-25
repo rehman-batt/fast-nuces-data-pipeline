@@ -14,7 +14,8 @@ def validate_training(path, evaluation_questions=None, source_pages=None):
     if source_pages is not None:
         for raw_page in source_pages:
             page = validate_page(raw_page)
-            sources.setdefault(page['url'], []).append(page['text'])
+            if not page['needs_ocr_review']:
+                sources.setdefault(page['url'], []).append(page['text'])
     eval_questions = {' '.join(row['question'].split()).casefold() for row in (evaluation_questions or [])}
     eval_sources = {normalize(url) for row in (evaluation_questions or []) for url in row['expected_urls']}
     with open(path, encoding='utf-8') as handle:
@@ -44,7 +45,7 @@ def validate_training(path, evaluation_questions=None, source_pages=None):
                 if question in eval_questions:
                     issues.append(f'line {line_number}: question overlaps development evaluation')
                 if source_pages is not None and not any(row['evidence'] in text for text in sources.get(url, [])):
-                    issues.append(f'line {line_number}: evidence not found in source snapshot')
+                    issues.append(f'line {line_number}: evidence not found in reviewed source snapshot')
                 if url in eval_sources:
                     issues.append(f'line {line_number}: source overlaps development evaluation')
                 previous = source_splits.setdefault(url, row['split'])
