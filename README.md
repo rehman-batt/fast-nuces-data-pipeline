@@ -53,12 +53,12 @@ A portfolio write-up should report the crawl date, scope, observed coverage, lim
 
 The ordered roadmap and acceptance criteria are in [TASKS.md](TASKS.md). Agent-specific working instructions are in [AGENTS.md](AGENTS.md). We intend to complete and review one task at a time, with tests and documented results.
 
-This directory is a local Git repository. No GitHub remote is currently configured. The intended workflow is a focused branch and reviewable commit for each task, followed by a pull request once a GitHub repository is connected. Check `git status` and review changes before committing; keep collected data and credentials out of version control. The existing code is a prototype and is scheduled for review in Task 1.
+This directory is a local Git repository. The GitHub remote is [rehman-batt/fast-nuces-data-pipeline](https://github.com/rehman-batt/fast-nuces-data-pipeline). The intended workflow is a focused branch and reviewable commit for each task, followed by a pull request once a GitHub repository is connected. Check `git status` and review changes before committing; keep collected data and credentials out of version control. The existing code is a prototype and is scheduled for review in Task 1.
 
 ## Engineering practices
 
 - Keep changes focused, with one task per branch and pull request where practical. Run relevant checks and review the diff before merging.
-- Maintain meaningful automated tests. A GitHub Actions workflow is configured to run the test suite on pull requests; its first live run is pending a connected GitHub repository.
+- Maintain meaningful automated tests. A GitHub Actions workflow is configured to run the test suite on pull requests; its first push run passed on Python 3.10 and 3.12. A pull-request run still needs verification.
 - Document setup, dependencies, configuration, commands, and run or dataset versions so results can be reproduced.
 - Preserve source provenance and document access and reuse decisions. Do not commit credentials, personal data, or unreviewed collected content.
 - Evaluate extraction and retrieval on a documented sample, reporting the methods, actual results, and limitations.
