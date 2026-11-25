@@ -25,7 +25,7 @@ Start with public HTML pages relevant to the questions above. Public text-based 
 
 ## Open decisions
 
-- Whether and under what conditions FAST permits the intended collection, training and any redistribution; robots access alone does not settle reuse rights.
+- The user reports FAST authorized use of its website data to build a student-query chatbot. Confirm before separately publishing or redistributing the dataset; robots access alone does not settle reuse rights.
 - Whether the main host redirects or links to another host required for useful coverage; assess in Task 4.
 - The size of the live pilot, the exact evaluation set and measurable performance targets; set these after site inspection and initial quality review rather than inventing numbers.
 - The contact identity for the crawler and any selected GitHub repository; obtain these before they are needed.

@@ -157,6 +157,23 @@ class PipelineTests(unittest.TestCase):
         sleep.assert_called_once_with(1.5)
         self.assertEqual(crawler.opener.open.call_count, 2)
 
+    def test_collection_logs_failures_and_preserves_prior_runs(self):
+        crawler = Crawler(['www.nu.edu.pk'], 'ExampleBot/1.0 (contact: team@example.com)')
+        crawler.permitted = lambda url: True
+        def fail(url):
+            raise TimeoutError('network timed out')
+        crawler.request = fail
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / 'pages.jsonl'
+            self.assertEqual(crawler.crawl('https://www.nu.edu.pk/', output, 2), 0)
+            log = Path(str(output) + '.log')
+            self.assertIn('network timed out', log.read_text())
+            output.write_text('prior data')
+            with self.assertRaises(FileExistsError):
+                crawler.crawl('https://www.nu.edu.pk/', output, 2)
+            self.assertEqual(output.read_text(), 'prior data')
+            self.assertIn('network timed out', log.read_text())
+
     def test_parser_removes_navigation_and_keeps_content(self):
         parser = PageParser()
         parser.feed('<title>FAST</title><nav>Menu</nav><h1>Admissions</h1><p>Apply now</p><script>bad()</script><a href="/fees">Fees</a>')
