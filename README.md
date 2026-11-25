@@ -44,6 +44,17 @@ Each crawl also creates a non-overwriting `<output>.inventory.jsonl` event log. 
 
 Each page line includes `url`, `title`, `crawled_at` (UTC), `content_type`, `sha256` of extracted text, `text`, and `tables` (rows of cells including header, rowspan and colspan). Each chunk includes a stable content-derived ID, source URL and title, source timestamp and its kind (`crawled_at` or `processed_at`), content type, optional PDF page number, and text. Input records are validated and a prior output is replaced only after all input records are valid. Identical extracted text is deduplicated, with all distinct source records retained in each chunk’s `sources` list. Near-duplicates are not merged. Text chunks overlap by 150 characters by default. Structured tables also produce `table_row` chunks with headers and source records. A table row longer than the configured chunk size stops preparation without replacing prior output; nested tables remain unsupported. The crawl timestamp is **not** the page's publication or update date.
 
+## Collection inventory
+
+To recover the saved HTML records from an older crawl and summarize inventories locally:
+
+```bash
+python3 -m fast_corpus.cli inventory-import --input data/old-pages.jsonl --output data/old-pages.inventory.jsonl
+python3 -m fast_corpus.cli inventory-report --input data/old-pages.inventory.jsonl --input data/new-pages.jsonl.inventory.jsonl
+```
+
+Import validates the entire input and is idempotent for identical input and output; it refuses to replace a different inventory. Historical imports only describe saved page records, not earlier discoveries, failures, or completed runs. Reports count distinct URLs per observed server-declared content type and event totals, and list `unknown` when the type is missing. A URL can appear under multiple types if its responses change. Event totals are not counts of distinct crawl runs or proof of complete site coverage. Keep inventory files local because URLs can contain personal information.
+
 ## Responsible use and limitations
 
 - Check each host's current robots rules, terms, copyright and permission for your intended collection, training and publication. A public page is not necessarily licensed for model training or redistribution. Review personal information before use.

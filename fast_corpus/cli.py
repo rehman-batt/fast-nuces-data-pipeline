@@ -1,6 +1,7 @@
 import argparse
 import logging
 from .crawler import Crawler
+from .inventory import import_pages, report
 from .prepare import prepare
 from .pdf import extract_pdf
 from .retrieval import Retriever, evaluate, load_jsonl
@@ -66,12 +67,22 @@ def main():
     store_search.add_argument("--limit", type=int, default=5)
     inspect = commands.add_parser("store-info", help="Show store snapshot metadata")
     inspect.add_argument("--store", default="data/rag-store.sqlite")
+    inventory_import = commands.add_parser("inventory-import", help="Recover collected HTML records from an earlier crawl")
+    inventory_import.add_argument("--input", required=True)
+    inventory_import.add_argument("--output", required=True)
+    inventory_report = commands.add_parser("inventory-report", help="Summarize inventory event files")
+    inventory_report.add_argument("--input", action="append", required=True, help="Inventory JSONL; repeat to combine runs")
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     try:
         if args.command == "crawl":
             count = Crawler(args.host or ["www.nu.edu.pk"], args.user_agent, args.delay, excluded_paths=args.exclude_path, allow_missing_robots=args.allow_missing_robots).crawl(args.seed, args.output, args.limit, args.sitemap, args.max_attempts, args.max_queued)
             print(f"Collected {count} pages to {args.output}")
+        elif args.command == "inventory-import":
+            count = import_pages(args.input, args.output)
+            print(f"Recovered {count} collected page records to {args.output}")
+        elif args.command == "inventory-report":
+            print(json.dumps(report(args.input), ensure_ascii=False, indent=2))
         elif args.command == "store-build":
             print(json.dumps(build_store(args.input, args.output, args.replace), ensure_ascii=False, indent=2))
         elif args.command == "store-search":
