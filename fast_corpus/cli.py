@@ -39,6 +39,7 @@ def main():
     evaluation = commands.add_parser("evaluate", help="Measure source retrieval on development questions")
     evaluation.add_argument("--input", default="data/chunks.jsonl")
     evaluation.add_argument("--questions", default="evaluation/questions.jsonl")
+    evaluation.add_argument("--scope", choices=("pilot", "indexed"), default="pilot", help="Score original pilot cases or all cases with indexed sources")
     evaluation.add_argument("--limit", type=int, default=5)
     validation = commands.add_parser("validate-training", help="Validate model-neutral training examples")
     validation.add_argument("--input", required=True)
@@ -58,7 +59,7 @@ def main():
         elif args.command == "search":
             print(json.dumps(Retriever(load_jsonl(args.input)).search(args.query, args.limit), ensure_ascii=False, indent=2))
         elif args.command == "evaluate":
-            print(json.dumps(evaluate(Retriever(load_jsonl(args.input)), load_jsonl(args.questions), args.limit), ensure_ascii=False, indent=2))
+            print(json.dumps(evaluate(Retriever(load_jsonl(args.input)), load_jsonl(args.questions), args.limit, args.scope), ensure_ascii=False, indent=2))
         elif args.command == "extract-pdf":
             pages = extract_pdf(args.input, args.source_url, args.output)
             print(f"Extracted {pages} PDF pages to {args.output}")
