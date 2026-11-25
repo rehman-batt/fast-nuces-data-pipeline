@@ -5,11 +5,12 @@ from hashlib import sha256
 from html.parser import HTMLParser
 import json
 import logging
+import posixpath
 from pathlib import Path
 import re
 import time
 from urllib.error import HTTPError, URLError
-from urllib.parse import urljoin, urlsplit, urlunsplit
+from urllib.parse import unquote, urljoin, urlsplit, urlunsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 from urllib.robotparser import RobotFileParser
 from xml.etree import ElementTree
@@ -98,12 +99,15 @@ class NoRedirect(HTTPRedirectHandler):
 
 
 class Crawler:
-    def __init__(self, hosts, user_agent, delay=2.0, timeout=20, max_bytes=2_000_000):
+    def __init__(self, hosts, user_agent, delay=2.0, timeout=20, max_bytes=2_000_000, excluded_paths=()):
         if not user_agent.strip() or "example.org/contact" in user_agent:
             raise ValueError("Provide a descriptive user agent with your contact information")
         if delay < 1:
             raise ValueError("Delay must be at least 1 second")
         self.hosts = {h.lower() for h in hosts}
+        if any(not path.startswith('/') or '?' in path or '#' in path for path in excluded_paths):
+            raise ValueError("Excluded paths must begin with / and omit query and fragment")
+        self.excluded_paths = tuple(excluded_paths)
         self.ua, self.delay, self.timeout, self.max_bytes = user_agent, delay, timeout, max_bytes
         self.opener = build_opener(NoRedirect())
         self.robots = {}
@@ -112,6 +116,12 @@ class Crawler:
     def allowed_host(self, url):
         parts = urlsplit(url)
         return parts.hostname in self.hosts and parts.port in (None, 80, 443)
+
+    def in_scope(self, url):
+        if not self.allowed_host(url):
+            return False
+        path = posixpath.normpath(unquote(urlsplit(url).path or '/'))
+        return not any(path.startswith(prefix) for prefix in self.excluded_paths)
 
     def request(self, url):
         origin = (urlsplit(url).scheme, urlsplit(url).netloc)
@@ -142,14 +152,14 @@ class Crawler:
 
     def crawl(self, seed, output, limit, sitemaps=()):
         seed = normalize(seed)
-        if not seed or not self.allowed_host(seed):
+        if not seed or not self.in_scope(seed):
             raise ValueError("Seed must be an HTTP(S) URL on an allowed host")
         if limit < 1:
             raise ValueError("Page limit must be positive")
         queue, seen, queued, count = deque([seed]), set(), {seed}, 0
         for sitemap in sitemaps:
             sitemap = normalize(sitemap, seed)
-            if not sitemap or not self.allowed_host(sitemap) or not self.permitted(sitemap):
+            if not sitemap or not self.in_scope(sitemap) or not self.permitted(sitemap):
                 LOG.warning("Sitemap skipped by scope or robots: %s", sitemap)
                 continue
             try:
@@ -158,7 +168,7 @@ class Crawler:
                     if len(raw) > self.max_bytes:
                         raise ValueError("Sitemap exceeds size limit")
                 for target in sitemap_urls(raw, sitemap):
-                    if self.allowed_host(target) and target not in queued:
+                    if self.in_scope(target) and target not in queued:
                         queue.append(target)
                         queued.add(target)
             except (HTTPError, URLError, TimeoutError, OSError, ValueError) as exc:
@@ -172,7 +182,7 @@ class Crawler:
                 if url in seen:
                     continue
                 seen.add(url)
-                if not self.allowed_host(url) or not self.permitted(url):
+                if not self.in_scope(url) or not self.permitted(url):
                     LOG.info("Skipped by scope or robots: %s", url)
                     continue
                 try:
@@ -192,7 +202,7 @@ class Crawler:
                 except HTTPError as exc:
                     if exc.code in (301, 302, 303, 307, 308) and exc.headers.get("Location"):
                         target = normalize(exc.headers["Location"], url)
-                        if target and self.allowed_host(target) and target not in seen and target not in queued:
+                        if target and self.in_scope(target) and target not in seen and target not in queued:
                             queue.appendleft(target)
                             queued.add(target)
                     else:
@@ -209,7 +219,7 @@ class Crawler:
                 text = parser.text()
                 for link in parser.links:
                     target = normalize(link, url)
-                    if target and self.allowed_host(target) and target not in seen and target not in queued:
+                    if target and self.in_scope(target) and target not in seen and target not in queued:
                         queue.append(target)
                         queued.add(target)
                 if not text:
