@@ -18,6 +18,7 @@ from xml.etree import ElementTree
 LOG = logging.getLogger(__name__)
 USER_AGENT = "FASTCorpusBot/0.1 (+https://example.org/contact; replace before use)"
 BLOCKED = {"script", "style", "nav", "footer", "header", "noscript", "svg"}
+VOID_TAGS = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"}
 BREAKS = {"p", "div", "br", "li", "h1", "h2", "h3", "h4", "tr", "section", "article"}
 
 
@@ -67,19 +68,32 @@ class PageParser(HTMLParser):
         attrs = dict(attrs)
         if tag == "a" and attrs.get("href"):
             self.links.append(attrs["href"])
-        if tag in BLOCKED:
-            self.skip += 1
         if tag == "title":
             self.in_title = True
-        if not self.skip and tag in BREAKS:
+        if self.skip:
+            if tag not in VOID_TAGS:
+                self.skip += 1
+            return
+        classes = set((attrs.get("class") or "").split())
+        if tag in BLOCKED or "breadcrumb" in classes:
+            if tag not in VOID_TAGS:
+                self.skip = 1
+            return
+        if tag in BREAKS:
             self.parts.append("\n")
 
+    def handle_startendtag(self, tag, attrs):
+        self.handle_starttag(tag, attrs)
+        if tag not in VOID_TAGS:
+            self.handle_endtag(tag)
+
     def handle_endtag(self, tag):
-        if tag in BLOCKED and self.skip:
-            self.skip -= 1
         if tag == "title":
             self.in_title = False
-        if not self.skip and tag in BREAKS:
+        if self.skip:
+            self.skip -= 1
+            return
+        if tag in BREAKS:
             self.parts.append("\n")
 
     def handle_data(self, data):
@@ -89,7 +103,7 @@ class PageParser(HTMLParser):
             self.parts.append(data)
 
     def text(self):
-        lines = [re.sub(r"\s+", " ", line).strip() for line in "".join(self.parts).splitlines()]
+        lines = [re.sub(r"\s+", " ", line).strip() for line in "".join(self.parts).replace("\ufeff", "").splitlines()]
         return "\n".join(line for line in lines if line)
 
 

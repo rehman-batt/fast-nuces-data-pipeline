@@ -2,7 +2,7 @@
 
 Work through one numbered task at a time. Each task is complete only when its acceptance criteria and verification are satisfied. Record evidence in the task entry; add follow-ups rather than concealing limitations. The current code is a prototype, not evidence that a task is complete.
 
-Status: `[ ]` not started, `[~]` in progress, `[x]` complete, `[!]` blocked. Next task: **10**. The live pilot (Task 9) remains conditional on the open access and reuse decisions in the site inspection.
+Status: `[ ]` not started, `[~]` in progress, `[x]` complete, `[!]` blocked. Next task: **11**. The live pilot (Task 9) remains conditional on the open access and reuse decisions in the site inspection.
 
 ## Phase 1: Define the project
 
@@ -21,7 +21,7 @@ Status: `[ ]` not started, `[~]` in progress, `[x]` complete, `[!]` blocked. Nex
 
 ## Phase 3: Extract and clean content
 
-- [ ] **10. Extract HTML content.** Preserve useful headings, paragraphs, lists, and links while removing boilerplate. Verification: representative synthetic or permitted fixtures exercise extraction and regressions.
+- [x] **10. Extract HTML content.** Preserve useful headings, paragraphs, lists, and links while removing boilerplate. Verification: 17 local tests pass, including nested breadcrumb, BOM, heading, list and link handling. One live schedule HTML sample was inspected: the extracted text begins with its heading and update date; table semantics remain Task 11. HTML extraction is heuristic, not a complete quality guarantee.
 - [ ] **11. Extract tables.** Preserve row and column relationships for relevant pages. Verification: tests cover representative tables and manual comparison with sources.
 - [ ] **12. Handle PDFs.** Extract permitted text-based PDFs with page-level provenance. Verification: tests cover representative PDFs and extraction failures; document treatment of scanned documents.
 - [ ] **13. Normalize and validate documents.** Define and enforce a schema with source, collection time, content type, and relevant metadata. Verification: tests accept valid records and report malformed ones.

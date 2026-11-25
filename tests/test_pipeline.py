@@ -183,6 +183,13 @@ class PipelineTests(unittest.TestCase):
                 crawler.request = request
                 self.assertEqual(crawler.permitted('https://www.nu.edu.pk/'), expected)
 
+    def test_html_extraction_removes_bom_and_nested_breadcrumbs(self):
+        parser = PageParser()
+        parser.feed('\ufeff<title>Schedule</title><h1>Schedule</h1><ol class="breadcrumb"><li><a href="/">Home</a><img src="x"></li><li>Admissions</li></ol><p>Dates</p><ul><li>First</li><li>Second</li></ul>')
+        self.assertEqual(parser.text(), 'Schedule\nDates\nFirst\nSecond')
+        self.assertEqual(parser.links, ['/'])
+        self.assertEqual(parser.title, ['Schedule'])
+
     def test_parser_removes_navigation_and_keeps_content(self):
         parser = PageParser()
         parser.feed('<title>FAST</title><nav>Menu</nav><h1>Admissions</h1><p>Apply now</p><script>bad()</script><a href="/fees">Fees</a>')
